@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 import pytest
 
 from raganything.biosignal import narrative, sources
-from raganything.biosignal.index import index_session
+from raganything.biosignal.index import index_session, reindex_session
+from raganything.biosignal.store import ReportStore
 from raganything.biosignal.schema import (
     Evidence,
     Modality,
@@ -393,3 +394,211 @@ class TestIndexing:
         # An overview is always produced, so the insert still happens; what
         # matters is that no metric was invented for it.
         assert report.metrics == {}
+
+
+class TestConsistentGating:
+    """Every metric is gated, not just TRIMP."""
+
+    def _thin_hr_session(self):
+        # Sensor dies three minutes into a thirty minute session.
+        session = build_session(with_rr=False)
+        hr = session.of(Modality.HEART_RATE)[0]
+        hr.samples = [s for s in hr.samples if s.t < T0 + 180]
+        return session
+
+    def test_mean_hr_from_a_low_coverage_stream_is_withheld(self):
+        report = narrative.analyze_session(self._thin_hr_session())
+        assert "mean_hr" not in report.metrics
+        assert "below the 0.50 threshold" in report.withheld["mean_hr"]
+
+    def test_max_hr_is_gated_too(self):
+        report = narrative.analyze_session(self._thin_hr_session())
+        assert "max_hr_observed" in report.withheld
+
+    def test_a_clean_stream_still_reports(self):
+        report = narrative.analyze_session(build_session())
+        assert report.metrics["mean_hr"] == pytest.approx(150.0)
+
+    def test_the_gating_quality_is_recorded_per_metric(self):
+        report = narrative.analyze_session(build_session())
+        assert report.metric_quality["mean_hr"] > 0.9
+        assert report.modality_quality["heart_rate"] > 0.9
+
+    def test_a_metric_with_no_identifiable_stream_is_withheld(self):
+        report = narrative.analyze_session(build_session())
+        # aerobic decoupling needs both power and heart rate; drop the quality
+        # entry for one of them and it must refuse rather than assume.
+        assert "aerobic_decoupling_pct" in report.metrics or (
+            "aerobic_decoupling_pct" in report.withheld
+        )
+
+    def test_intensity_factor_refusal_is_not_reported_as_zero(self):
+        """Regression: `or 0.0` turned a refusal into a value of zero."""
+        report = narrative.analyze_session(build_session(), threshold_power=-10.0)
+        assert report.metrics.get("intensity_factor") != 0.0
+        assert "intensity_factor" in report.withheld
+        assert "must be positive" in report.withheld["intensity_factor"]
+
+    def test_decoupling_withheld_key_matches_the_metric_name(self):
+        """A withheld key that differs from its metric is invisible to lookups."""
+        short = build_session(minutes=2)
+        report = narrative.analyze_session(short)
+        assert "aerobic_decoupling" not in report.withheld
+        if "aerobic_decoupling_pct" not in report.metrics:
+            assert "aerobic_decoupling_pct" in report.withheld
+
+
+class TestCaveatsTravelWithTheNumbers:
+    """Chunking splits text items apart; tables stay whole."""
+
+    def _degraded(self):
+        session = build_session()
+        hr = session.of(Modality.HEART_RATE)[0]
+        hr.samples = [s for s in hr.samples if s.t < T0 + 600]
+        return narrative.analyze_session(session)
+
+    def test_only_text_and_table_items_are_emitted(self):
+        items = narrative.to_content_list(narrative.analyze_session(build_session()))
+        assert {i["type"] for i in items} <= {"text", "table"}
+
+    def test_caveats_are_inlined_in_the_metrics_table_footnote(self):
+        items = narrative.to_content_list(self._degraded())
+        ledger = next(
+            i
+            for i in items
+            if i["type"] == "table" and "Derived metrics" in i["table_caption"][0]
+        )
+        footnote = " ".join(ledger["table_footnote"])
+        assert "Caveats that qualify every number" in footnote
+        assert "no data" in footnote
+
+    def test_the_metrics_table_carries_a_quality_column(self):
+        items = narrative.to_content_list(narrative.analyze_session(build_session()))
+        ledger = next(
+            i
+            for i in items
+            if i["type"] == "table" and "Derived metrics" in i["table_caption"][0]
+        )
+        assert "quality" in ledger["table_body"].split("\n")[0]
+
+    def test_hrv_detail_is_a_table_not_loose_text(self):
+        items = narrative.to_content_list(narrative.analyze_session(build_session()))
+        captions = [i["table_caption"][0] for i in items if i["type"] == "table"]
+        assert any("Heart-rate variability detail" in c for c in captions)
+
+    def test_fusion_detail_is_a_table_carrying_the_session_id(self):
+        session = build_session()
+        session.add(
+            Stream(
+                modality=Modality.HEART_RATE,
+                provenance=Provenance(
+                    source_id="watch",
+                    kind=SourceKind.VENDOR_CLOUD,
+                    device="wrist optical",
+                    latency_s=300.0,
+                    documented=False,
+                ),
+                samples=[
+                    Sample(
+                        t=T0 + i,
+                        value=165.0,
+                        evidence=Evidence.VENDOR_DERIVED,
+                        confidence=0.6,
+                    )
+                    for i in range(1800)
+                ],
+            )
+        )
+        items = narrative.to_content_list(narrative.analyze_session(session))
+        fusion = next(
+            i
+            for i in items
+            if i["type"] == "table"
+            and "Cross-source agreement" in i["table_caption"][0]
+        )
+        assert "ride-001" in fusion["table_caption"][0]
+        assert "LoA lower" in fusion["table_body"]
+
+    def test_every_item_carries_the_session_id(self):
+        items = narrative.to_content_list(self._degraded())
+        for item in items:
+            blob = item.get("text", "") + " ".join(
+                item.get("table_caption", []) + item.get("table_footnote", [])
+            )
+            assert "ride-001" in blob
+
+    def test_the_caveat_text_block_is_still_emitted(self):
+        # Kept for entity extraction, but nothing load-bearing lives only there.
+        items = narrative.to_content_list(self._degraded())
+        assert any("Data-quality caveats" in i.get("text", "") for i in items)
+
+
+class _StoringFakeRAG(_FakeRAG):
+    def __init__(self, working_dir):
+        super().__init__()
+        self.working_dir = str(working_dir)
+        self.lightrag = self
+        self.deleted = []
+
+    async def adelete_by_doc_id(self, doc_id):
+        self.deleted.append(doc_id)
+
+
+class TestIndexingAndPersistence:
+    def test_the_report_is_written_to_the_store(self, tmp_path):
+        rag = _StoringFakeRAG(tmp_path)
+        asyncio.run(index_session(rag, build_session()))
+
+        store = ReportStore(tmp_path / "biosignal")
+        record = store.get("ride-001")
+        assert record is not None
+        assert record.doc_id == "biosignal:ride-001"
+        assert record.content_hash
+
+    def test_an_explicit_store_is_honoured(self, tmp_path):
+        store = ReportStore(tmp_path / "elsewhere")
+        asyncio.run(index_session(_FakeRAG(), build_session(), store=store))
+        assert store.get("ride-001") is not None
+
+    def test_reindexing_unchanged_content_skips_the_graph(self, tmp_path):
+        rag = _StoringFakeRAG(tmp_path)
+        asyncio.run(index_session(rag, build_session()))
+        asyncio.run(index_session(rag, build_session()))
+        # The second insert would have been discarded as a duplicate anyway;
+        # skipping avoids leaving a failed dup- record behind.
+        assert len(rag.calls) == 1
+
+    def test_replace_deletes_before_inserting(self, tmp_path):
+        rag = _StoringFakeRAG(tmp_path)
+        asyncio.run(index_session(rag, build_session()))
+        asyncio.run(reindex_session(rag, build_session()))
+        assert rag.deleted == ["biosignal:ride-001"]
+        assert len(rag.calls) == 2
+
+    def test_replace_without_delete_support_is_an_explicit_error(self, tmp_path):
+        rag = _FakeRAG()
+        with pytest.raises(NotImplementedError, match="adelete_by_doc_id"):
+            asyncio.run(
+                index_session(
+                    rag,
+                    build_session(),
+                    store=ReportStore(tmp_path),
+                    replace=True,
+                )
+            )
+
+    def test_the_store_is_updated_even_when_the_graph_is_not(self, tmp_path):
+        rag = _StoringFakeRAG(tmp_path)
+        asyncio.run(index_session(rag, build_session()))
+        # Re-analyse with a different threshold so the content genuinely changes.
+        asyncio.run(index_session(rag, build_session(), threshold_power=250.0))
+        record = ReportStore(tmp_path / "biosignal").get("ride-001")
+        assert "intensity_factor" in record.metrics or (
+            "intensity_factor" in record.withheld
+        )
+
+    def test_indexing_without_a_working_dir_still_succeeds(self):
+        rag = _FakeRAG()
+        report = asyncio.run(index_session(rag, build_session()))
+        assert report.session.session_id == "ride-001"
+        assert len(rag.calls) == 1

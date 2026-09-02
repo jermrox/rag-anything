@@ -1118,11 +1118,29 @@ decoded = codecs.decode(uuids.CHR_HEART_RATE_MEASUREMENT, payload, timestamp)
 report = await index_session(rag, session, rest_hr=48, max_hr=186)
 ```
 
+Sessions are also persisted to a report store, which a query layer computes over
+directly -- so questions that need arithmetic get arithmetic, not similarity
+search, and every answer is checked against what the data supports before it is
+returned:
+
+```python
+from raganything.biosignal import BiosignalQueryEngine
+
+engine = BiosignalQueryEngine(store=store)          # no LLM, no network
+print(engine.compute("is my RMSSD trending down over the last six weeks?").answer)
+
+engine = BiosignalQueryEngine(rag=rag)              # retrieval for the rest
+answer = await engine.aask("why was recovery poor on the 14th?")
+```
+
 The decoders are pure functions over bytes and need no Bluetooth stack; live
 capture needs `pip install raganything[biosignal]`. See
 **[docs/ble_fitness_gap_analysis.md](docs/ble_fitness_gap_analysis.md)** for what
-today's platforms discard and why, and `examples/biosignal_example.py` for a
-runnable walkthrough that needs no hardware.
+today's platforms discard and why,
+**[docs/biosignal_query_layer.md](docs/biosignal_query_layer.md)** for how
+questions are routed, computed and verified, and
+`examples/biosignal_example.py` for a runnable walkthrough that needs no
+hardware.
 
 ### Public media URLs (CDN / object storage)
 

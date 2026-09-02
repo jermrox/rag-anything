@@ -18,6 +18,8 @@ import struct
 import time
 
 from raganything.biosignal import narrative, sources
+from raganything.biosignal.query import BiosignalQueryEngine
+from raganything.biosignal.store import ReportStore
 from raganything.biosignal.ble import codecs, uuids
 from raganything.biosignal.ble.client import StreamRecorder
 from raganything.biosignal.schema import Session
@@ -181,6 +183,102 @@ def main() -> None:
         print(item.get("text") or item.get("table_body"))
 
 
+def query_layer_example() -> None:
+    """Answer questions over a history of sessions, with no LLM involved.
+
+    Everything below is arithmetic over the stored reports. The withheld
+    metrics and excluded sessions are printed alongside the answers, because
+    the denominator is part of the answer.
+    """
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        store = ReportStore(tmp)
+        base = time.time() - 45 * 86400
+
+        for i in range(14):
+            start = base + i * 3 * 86400
+            # A gently declining HRV, and one session where the strap fails.
+            amplitude = 30.0 - i * 1.1
+            broken = i == 9
+            rr = []
+            for k in range(900):
+                t = start + k * 0.6
+                rr.append((t, 1000.0 + (amplitude if k % 2 else -amplitude)))
+            streams = []
+            if not broken:
+                streams.append(_rr_stream(rr))
+            streams.append(_hr_stream(start, 138.0 + i * 0.4))
+            session = Session(
+                f"ride-{i:02d}",
+                start,
+                start + 540,
+                streams=streams,
+                labels={"sport": "cycling"},
+            )
+            store.put(narrative.analyze_session(session))
+
+        engine = BiosignalQueryEngine(store=store)
+        questions = [
+            "is my HRV trending down over the last six weeks?",
+            "what was my average heart rate over the last 6 weeks?",
+            "what was my highest heart rate last month?",
+        ]
+        for question in questions:
+            answer = engine.compute(question)
+            print()
+            print("=" * 78)
+            print("Q:", question)
+            print("=" * 78)
+            print(answer.answer)
+            if answer.withheld:
+                print("\n  withheld:")
+                for key, reason in list(answer.withheld.items())[:3]:
+                    print(f"    {key}: {reason[:88]}")
+
+
+def _rr_stream(pairs):
+    from raganything.biosignal.schema import (
+        Modality,
+        Provenance,
+        SourceKind,
+        make_stream,
+    )
+
+    return make_stream(
+        Modality.RR_INTERVAL,
+        pairs,
+        Provenance(
+            source_id="strap-rr",
+            kind=SourceKind.BLE,
+            device="Polar H10",
+            latency_s=0.05,
+            nominal_hz=2.0,
+        ),
+    )
+
+
+def _hr_stream(start, bpm):
+    from raganything.biosignal.schema import (
+        Modality,
+        Provenance,
+        SourceKind,
+        make_stream,
+    )
+
+    return make_stream(
+        Modality.HEART_RATE,
+        [(start + i, bpm) for i in range(540)],
+        Provenance(
+            source_id="strap-hr",
+            kind=SourceKind.BLE,
+            device="Polar H10",
+            latency_s=0.05,
+            nominal_hz=1.0,
+        ),
+    )
+
+
 async def live_capture_example() -> None:  # pragma: no cover - needs hardware
     """Capture from a real device. Requires ``pip install raganything[biosignal]``."""
     from raganything.biosignal.ble.client import BLECollector
@@ -213,6 +311,11 @@ async def indexing_example() -> None:  # pragma: no cover - needs an LLM backend
 
 if __name__ == "__main__":
     main()
+    print("\n\n")
+    print("#" * 78)
+    print("# QUERY LAYER -- deterministic answers, no LLM and no network")
+    print("#" * 78)
+    query_layer_example()
     if False:  # flip to True with hardware / a configured backend
         asyncio.run(live_capture_example())
         asyncio.run(indexing_example())

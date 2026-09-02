@@ -49,9 +49,20 @@ class SessionReport:
     session: Session
     quality: Dict[str, quality.QualityReport] = field(default_factory=dict)
     fusion: Dict[Modality, fusion.FusionResult] = field(default_factory=dict)
+    #: Diagnostic detail only -- correction method, beat counts, artifact
+    #: fraction. **Never read values from ``hrv.metrics``**: a metric withheld
+    #: by the quality gate still appears there, so consulting it silently
+    #: defeats the withholding. ``metrics`` and ``withheld`` are authoritative.
     hrv: Optional[hrv.HRVResult] = None
     metrics: Dict[str, float] = field(default_factory=dict)
     withheld: Dict[str, str] = field(default_factory=dict)
+    #: modality value -> quality score of the stream chosen for it.
+    modality_quality: Dict[str, float] = field(default_factory=dict)
+    #: metric name -> the quality score its gate was actually evaluated
+    #: against. Recorded at gate time so no consumer has to reconstruct the
+    #: join between metrics, modalities and streams and risk disagreeing
+    #: with the decision that was made here.
+    metric_quality: Dict[str, float] = field(default_factory=dict)
     warnings: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -62,6 +73,8 @@ class SessionReport:
             "hrv": self.hrv.to_dict() if self.hrv else None,
             "metrics": dict(self.metrics),
             "withheld": dict(self.withheld),
+            "modality_quality": dict(self.modality_quality),
+            "metric_quality": dict(self.metric_quality),
             "warnings": list(self.warnings),
         }
 
@@ -108,24 +121,85 @@ def analyze_session(
             return None
         return report.quality.get(stream.provenance.source_id)
 
+    # Map each modality to the stream actually chosen for it, so that a metric
+    # can be gated against the quality of the signal that produced it rather
+    # than against nothing at all.
+    chosen: Dict[Modality, Stream] = {}
+    for modality in session.modalities():
+        stream = best(modality)
+        if stream is not None:
+            chosen[modality] = stream
+            stream_quality = report.quality.get(stream.provenance.source_id)
+            if stream_quality is not None:
+                report.modality_quality[modality.value] = stream_quality.score
+
+    def governing_quality(
+        *modalities: Modality,
+    ) -> Optional[quality.QualityReport]:
+        """Weakest quality report among the streams supporting a metric.
+
+        A metric derived from two signals is only as trustworthy as the worse
+        of them: aerobic decoupling computed from clean power and a heart-rate
+        stream that dropped out for a third of the session is not a clean
+        measurement of anything.
+        """
+        reports: List[quality.QualityReport] = []
+        for modality in modalities:
+            stream = chosen.get(modality)
+            if stream is None:
+                return None
+            report_for_stream = report.quality.get(stream.provenance.source_id)
+            if report_for_stream is None:
+                return None
+            reports.append(report_for_stream)
+        if not reports:
+            return None
+        return min(reports, key=lambda r: r.score)
+
+    def record(
+        name: str,
+        value: Optional[float],
+        *modalities: Modality,
+        label: Optional[str] = None,
+    ) -> None:
+        """Report a metric only if the signal behind it can support it.
+
+        Every metric goes through this. An earlier version gated only TRIMP,
+        which meant a mean heart rate computed over a stream with twelve
+        percent coverage was reported as an ordinary number -- the precise
+        failure this module exists to prevent, committed by the module itself.
+        """
+        if value is None:
+            return
+        governing = governing_quality(*modalities)
+        if governing is None:
+            report.withheld[name] = (
+                f"withheld: cannot identify which stream supports {name}, so "
+                "its quality cannot be verified"
+            )
+            return
+        report.metric_quality[name] = governing.score
+        gated, explanation = quality.gate(value, governing, min_quality, label or name)
+        if gated is None:
+            report.withheld[name] = explanation
+        else:
+            report.metrics[name] = gated
+
     # --- HRV ------------------------------------------------------------
     rr_stream = best(Modality.RR_INTERVAL)
     if rr_stream is not None and len(rr_stream) >= 4:
-        rr_quality = q(rr_stream)
         usable = [
             s.value for s in rr_stream.sorted().samples if "no_contact" not in s.flags
         ]
         result = hrv.hrv_metrics(usable)
         report.hrv = result
-        if rr_quality is not None and rr_quality.score < min_quality:
-            for name in list(result.metrics):
-                report.withheld[f"hrv_{name}"] = (
-                    f"withheld: RR stream quality {rr_quality.score:.2f} below "
-                    f"{min_quality:.2f} ({'; '.join(rr_quality.reasons)})"
-                )
-        else:
-            for name, value in result.metrics.items():
-                report.metrics[f"hrv_{name}"] = value
+        for name, value in result.metrics.items():
+            record(
+                f"hrv_{name}",
+                value,
+                Modality.RR_INTERVAL,
+                label=f"HRV {name}",
+            )
         for name, reason in result.withheld.items():
             report.withheld.setdefault(f"hrv_{name}", reason)
     else:
@@ -141,8 +215,16 @@ def analyze_session(
             (s.t, s.value) for s in hr_stream.sorted().samples if s.confidence > 0
         ]
         if hr_pairs:
-            report.metrics["mean_hr"] = sum(v for _, v in hr_pairs) / len(hr_pairs)
-            report.metrics["max_hr_observed"] = max(v for _, v in hr_pairs)
+            record(
+                "mean_hr",
+                sum(v for _, v in hr_pairs) / len(hr_pairs),
+                Modality.HEART_RATE,
+            )
+            record(
+                "max_hr_observed",
+                max(v for _, v in hr_pairs),
+                Modality.HEART_RATE,
+            )
         if rest_hr is None or max_hr is None:
             report.withheld["trimp"] = (
                 "withheld: TRIMP needs the athlete's measured resting and maximum "
@@ -150,23 +232,22 @@ def analyze_session(
                 "about the person, not a measure of the session"
             )
         else:
-            value = load.trimp_banister(hr_pairs, rest_hr, max_hr, sex=sex)
-            gated, explanation = quality.gate(
-                value,
-                report.quality[hr_stream.provenance.source_id],
-                min_quality,
-                "TRIMP",
+            record(
+                "trimp",
+                load.trimp_banister(hr_pairs, rest_hr, max_hr, sex=sex),
+                Modality.HEART_RATE,
+                label="TRIMP",
             )
-            if gated is None:
-                report.withheld["trimp"] = explanation
-            else:
-                report.metrics["trimp"] = gated
 
     # --- power -----------------------------------------------------------
     power_stream = best(Modality.POWER)
     if power_stream is not None and len(power_stream) >= 2:
         pw_pairs = [(s.t, s.value) for s in power_stream.sorted().samples]
-        report.metrics["mean_power"] = sum(v for _, v in pw_pairs) / len(pw_pairs)
+        record(
+            "mean_power",
+            sum(v for _, v in pw_pairs) / len(pw_pairs),
+            Modality.POWER,
+        )
         np_value = load.normalized_power(pw_pairs)
         if np_value is None:
             report.withheld["normalized_power"] = (
@@ -174,16 +255,25 @@ def analyze_session(
                 "statistic is defined over"
             )
         else:
-            report.metrics["normalized_power"] = np_value
+            record("normalized_power", np_value, Modality.POWER)
             if threshold_power:
-                report.metrics["intensity_factor"] = (
-                    load.intensity_factor(np_value, threshold_power) or 0.0
+                intensity = load.intensity_factor(np_value, threshold_power)
+                if intensity is None:
+                    # intensity_factor refuses on a non-positive threshold. An
+                    # earlier `or 0.0` here turned that refusal into a reported
+                    # value of zero, which is exactly the quiet fabrication this
+                    # subsystem exists to prevent.
+                    report.withheld["intensity_factor"] = (
+                        "withheld: threshold power must be positive for an "
+                        f"intensity factor to mean anything (got {threshold_power})"
+                    )
+                else:
+                    record("intensity_factor", intensity, Modality.POWER)
+                record(
+                    "training_stress",
+                    load.training_stress(session.duration_s, np_value, threshold_power),
+                    Modality.POWER,
                 )
-                tss = load.training_stress(
-                    session.duration_s, np_value, threshold_power
-                )
-                if tss is not None:
-                    report.metrics["training_stress"] = tss
             else:
                 report.withheld["intensity_factor"] = (
                     "withheld: needs a measured functional threshold power"
@@ -194,14 +284,36 @@ def analyze_session(
                 pw_pairs, [(s.t, s.value) for s in hr_stream.sorted().samples]
             )
             if decoupling is None:
-                report.withheld["aerobic_decoupling"] = (
+                # Keyed to match the metric name exactly: a withheld entry whose
+                # key differs from the metric it withholds is invisible to any
+                # consumer looking the metric up.
+                report.withheld["aerobic_decoupling_pct"] = (
                     "withheld: needs at least ten minutes of overlapping power and "
                     "heart rate"
                 )
             else:
-                report.metrics["aerobic_decoupling_pct"] = decoupling
+                record(
+                    "aerobic_decoupling_pct",
+                    decoupling,
+                    Modality.POWER,
+                    Modality.HEART_RATE,
+                )
 
     return report
+
+
+def _caveat_lines(report: SessionReport) -> List[str]:
+    """Every reason a reader should hesitate before believing this session."""
+    caveats: List[str] = list(report.warnings)
+    for source_id, qr in report.quality.items():
+        if qr.score < 0.8:
+            caveats.append(
+                f"{source_id} ({qr.stream_modality}) scored {qr.score:.2f}: "
+                + "; ".join(qr.reasons)
+            )
+    if report.hrv is not None and report.hrv.notes:
+        caveats.extend(f"HRV: {note}" for note in report.hrv.notes)
+    return caveats
 
 
 def to_content_list(
@@ -209,20 +321,30 @@ def to_content_list(
 ) -> List[Dict[str, Any]]:
     """Render a report as a RAG-Anything content list.
 
-    The output is deliberately plain: narrative text plus markdown tables, in an
-    order that reads top-down. Retrieval works on the text, and every retrieved
-    fragment carries the provenance and confidence needed to interpret it
-    without going back to the raw signal.
+    The structure here is dictated by how the ingestion pipeline chunks. Every
+    ``text`` item in a content list is concatenated with the others into a
+    single document and re-split on a token budget, so two facts written as
+    separate text items can end up in different chunks and be retrieved apart.
+    A ``table`` item, by contrast, becomes its own chunk with its caption,
+    body and footnotes inlined.
+
+    So anything that must never be read without its caveat is written as a
+    table, and the caveats go in that table's footnote. An earlier version put
+    the caveats in a text block of their own, which meant a retrieval hit on
+    the metrics could arrive with the qualifications stripped off -- precisely
+    the failure this subsystem exists to prevent.
     """
     session = report.session
     page = page_offset
     items: List[Dict[str, Any]] = []
+    stamp = f"session {session.session_id} on {_iso(session.start)[:10]}"
+    caveats = _caveat_lines(report)
 
     labels = ", ".join(
         f"{k}={v}" for k, v in session.labels.items() if k != "undecoded_notifications"
     )
     overview = (
-        f"Biosignal session {session.session_id} for subject {session.subject_id}. "
+        f"Biosignal {stamp} for subject {session.subject_id}. "
         f"Recorded from {_iso(session.start)} to {_iso(session.end)}, a duration of "
         f"{session.duration_s / 60.0:.1f} minutes. "
         f"Modalities captured: {', '.join(m.value for m in session.modalities()) or 'none'}. "
@@ -271,9 +393,7 @@ def to_content_list(
                     ],
                     rows,
                 ),
-                "table_caption": [
-                    f"Stream inventory and provenance for session {session.session_id}"
-                ],
+                "table_caption": [f"Stream inventory and provenance for {stamp}"],
                 "table_footnote": [
                     "Evidence 'measured' is a sensor reading; 'vendor_derived' is a "
                     "closed algorithm's output; 'imputed' was invented to fill a gap. "
@@ -287,27 +407,46 @@ def to_content_list(
 
     # --- the evidence ledger --------------------------------------------
     metric_rows = [
-        [name, _fmt(value, 2), "reported", ""]
+        [
+            name,
+            _fmt(value, 2),
+            _fmt(report.metric_quality.get(name), 2),
+            "reported",
+            "",
+        ]
         for name, value in sorted(report.metrics.items())
     ]
     metric_rows += [
-        [name, "-", "withheld", reason]
+        [
+            name,
+            "-",
+            _fmt(report.metric_quality.get(name), 2),
+            "withheld",
+            reason,
+        ]
         for name, reason in sorted(report.withheld.items())
     ]
     if metric_rows:
+        footnote = [
+            "A withheld metric was not computable to a standard worth reporting. "
+            "Do not infer a value for it from other rows. The quality column is "
+            "the score of the stream the metric was gated against."
+        ]
+        if caveats:
+            footnote.append(
+                "Caveats that qualify every number in this table: " + "; ".join(caveats)
+            )
         items.append(
             {
                 "type": "table",
                 "table_body": _table(
-                    ["metric", "value", "status", "reason if withheld"], metric_rows
+                    ["metric", "value", "quality", "status", "reason if withheld"],
+                    metric_rows,
                 ),
                 "table_caption": [
-                    f"Derived metrics and withholding decisions for {session.session_id}"
+                    f"Derived metrics and withholding decisions for {stamp}"
                 ],
-                "table_footnote": [
-                    "A withheld metric was not computable to a standard worth "
-                    "reporting. Do not infer a value for it from other rows."
-                ],
+                "table_footnote": footnote,
                 "page_idx": page,
             }
         )
@@ -316,71 +455,130 @@ def to_content_list(
     # --- HRV detail ------------------------------------------------------
     if report.hrv is not None:
         h = report.hrv
-        text = (
-            f"Heart-rate variability for {session.session_id} was computed from "
-            f"{h.n_beats_used} usable beat intervals spanning {h.window_s:.0f} seconds, "
-            f"using {h.method} artifact correction, which rejected "
-            f"{h.artifact_fraction:.1%} of beats. Overall confidence in these HRV "
-            f"figures is {h.confidence:.2f} on a 0-1 scale."
-        )
-        if h.metrics:
-            text += (
-                " Reported: "
-                + ", ".join(f"{k} {v:.1f}" for k, v in sorted(h.metrics.items()))
-                + "."
-            )
-        if h.withheld:
-            text += (
-                " Withheld: "
-                + "; ".join(f"{k} ({why})" for k, why in sorted(h.withheld.items()))
-                + "."
-            )
+        hrv_rows = [
+            [name, _fmt(value, 1), "reported", ""]
+            for name, value in sorted(h.metrics.items())
+        ]
+        hrv_rows += [
+            [name, "-", "withheld", why] for name, why in sorted(h.withheld.items())
+        ]
+        hrv_footnote = [
+            f"Computed from {h.n_beats_used} usable beat intervals spanning "
+            f"{h.window_s:.0f} seconds, using {h.method} artifact correction, which "
+            f"rejected {h.artifact_fraction:.1%} of beats. Overall confidence "
+            f"{h.confidence:.2f} on a 0-1 scale."
+        ]
         if h.notes:
-            text += " Notes: " + "; ".join(h.notes) + "."
-        items.append({"type": "text", "text": text, "page_idx": page})
-        page += 1
+            hrv_footnote.append("Notes: " + "; ".join(h.notes) + ".")
+        hrv_footnote.append(
+            "These are the raw HRV computations. Where the session's evidence "
+            "ledger marks one of them withheld, that decision governs and the "
+            "value here must not be quoted."
+        )
+        if hrv_rows:
+            items.append(
+                {
+                    "type": "table",
+                    "table_body": _table(
+                        [
+                            "hrv metric",
+                            "value (ms or %)",
+                            "status",
+                            "reason if withheld",
+                        ],
+                        hrv_rows,
+                    ),
+                    "table_caption": [f"Heart-rate variability detail for {stamp}"],
+                    "table_footnote": hrv_footnote,
+                    "page_idx": page,
+                }
+            )
+            page += 1
 
     # --- disagreement between sources ------------------------------------
     if report.fusion:
-        lines: List[str] = []
+        fusion_rows: List[List[Any]] = []
+        chosen_lines: List[str] = []
+        conflict_lines: List[str] = []
         for modality, result in report.fusion.items():
-            lines.append(f"For {modality.value}, {result.chosen_reason}.")
+            chosen_lines.append(f"For {modality.value}, {result.chosen_reason}")
             for ag in result.agreements:
-                lines.append(
-                    f"Against {ag.b}, bias was {ag.bias:+.1f} {UNIT_HINT.get(modality, '')}"
-                    f" over {ag.n_pairs} matched samples, with 95% limits of agreement "
-                    f"[{ag.limits[0]:+.1f}, {ag.limits[1]:+.1f}] and a worst-case "
-                    f"difference of {ag.max_abs_difference:.1f}."
+                fusion_rows.append(
+                    [
+                        modality.value,
+                        ag.a,
+                        ag.b,
+                        ag.n_pairs,
+                        f"{ag.bias:+.1f}",
+                        f"{ag.limits[0]:+.1f}",
+                        f"{ag.limits[1]:+.1f}",
+                        f"{ag.max_abs_difference:.1f}",
+                        UNIT_HINT.get(modality, ""),
+                    ]
                 )
-            for conflict in result.conflicts:
-                lines.append(f"Conflict: {conflict}.")
-        items.append(
-            {
-                "type": "text",
-                "text": (
-                    "Cross-source reconciliation. Where several devices measured the "
-                    "same thing, one was selected and the rest were compared against "
-                    "it rather than discarded.\n" + "\n".join(lines)
-                ),
-                "page_idx": page,
-            }
-        )
-        page += 1
+            conflict_lines.extend(result.conflicts)
+        if fusion_rows:
+            items.append(
+                {
+                    "type": "table",
+                    "table_body": _table(
+                        [
+                            "modality",
+                            "chosen source",
+                            "compared against",
+                            "matched samples",
+                            "bias",
+                            "LoA lower",
+                            "LoA upper",
+                            "worst case",
+                            "unit",
+                        ],
+                        fusion_rows,
+                    ),
+                    "table_caption": [f"Cross-source agreement for {stamp}"],
+                    "table_footnote": [
+                        "Where several devices measured the same thing, one was "
+                        "selected and the rest compared against it rather than "
+                        "discarded. " + " ".join(chosen_lines)
+                    ]
+                    + (
+                        ["Conflicts: " + "; ".join(conflict_lines)]
+                        if conflict_lines
+                        else []
+                    ),
+                    "page_idx": page,
+                }
+            )
+            page += 1
+        elif conflict_lines or chosen_lines:
+            items.append(
+                {
+                    "type": "text",
+                    "text": (
+                        f"Cross-source reconciliation for {stamp}. "
+                        + " ".join(chosen_lines)
+                        + (
+                            ""
+                            if not conflict_lines
+                            else " Conflicts: " + "; ".join(conflict_lines) + "."
+                        )
+                    ),
+                    "page_idx": page,
+                }
+            )
+            page += 1
 
     # --- caveats ----------------------------------------------------------
-    caveats: List[str] = list(report.warnings)
-    for source_id, qr in report.quality.items():
-        if qr.score < 0.8:
-            caveats.append(
-                f"{source_id} ({qr.stream_modality}) scored {qr.score:.2f}: "
-                + "; ".join(qr.reasons)
-            )
+    # Retained so the knowledge graph extracts entities and relations from the
+    # caveats too. Nothing load-bearing lives only here: every caveat above is
+    # also inlined into the metrics table's footnote, which cannot be split
+    # away from the numbers it qualifies.
     if caveats:
         items.append(
             {
                 "type": "text",
                 "text": (
-                    f"Data-quality caveats for session {session.session_id}. Any "
+                    f"Data-quality caveats for {stamp}. Any "
                     "conclusion drawn from this session must be qualified by the "
                     "following:\n- " + "\n- ".join(caveats)
                 ),

@@ -13,8 +13,23 @@ See ``docs/ble_fitness_gap_analysis.md`` for what today's platforms discard and
 why each of those omissions is addressed here.
 """
 
-from . import analytics, ble, index, narrative, sources
+from . import (
+    analytics,
+    ble,
+    index,
+    narrative,
+    prompts,
+    query,
+    router,
+    sources,
+    store,
+    timeseries,
+    verify,
+)
 from .narrative import SessionReport, analyze_session, to_content_list
+from .query import BiosignalAnswer, BiosignalQueryEngine, aquery_biosignal
+from .router import QueryPlan, Route
+from .store import ReportRecord, ReportStore
 from .schema import (
     Evidence,
     Modality,
@@ -31,7 +46,13 @@ __all__ = [
     "ble",
     "index",
     "narrative",
+    "prompts",
+    "query",
+    "router",
     "sources",
+    "store",
+    "timeseries",
+    "verify",
     "Evidence",
     "Modality",
     "Provenance",
@@ -41,6 +62,13 @@ __all__ = [
     "SourceKind",
     "Stream",
     "analyze_session",
+    "aquery_biosignal",
     "make_stream",
     "to_content_list",
+    "BiosignalAnswer",
+    "BiosignalQueryEngine",
+    "QueryPlan",
+    "ReportRecord",
+    "ReportStore",
+    "Route",
 ]
