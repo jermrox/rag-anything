@@ -41,6 +41,9 @@ markdown = [
     "pygments>=2.10.0",
 ]
 audio = ["faster-whisper>=1.0.0"]
+# Live Bluetooth Low Energy capture. The decoders, analytics and indexing in
+# raganything.biosignal work without it; only BLECollector needs a radio.
+biosignal = ["bleak>=0.22.0"]
 video = [
     "scenedetect[opencv]>=0.6.0",
     "moviepy>=2.0.0",
@@ -59,6 +62,7 @@ all = [
     "scenedetect[opencv]>=0.6.0",
     "moviepy>=2.0.0",
     "opencv-python>=4.8.0",
+    "bleak>=0.22.0",
 ]
 
 [project.urls]
