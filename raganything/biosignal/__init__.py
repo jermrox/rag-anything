@@ -16,6 +16,7 @@ why each of those omissions is addressed here.
 from . import (
     analytics,
     ble,
+    corpus,
     index,
     narrative,
     prompts,
@@ -44,6 +45,7 @@ from .schema import (
 __all__ = [
     "analytics",
     "ble",
+    "corpus",
     "index",
     "narrative",
     "prompts",
