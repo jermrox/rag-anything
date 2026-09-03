@@ -16,6 +16,7 @@ from vitalgraph.acquire.base import (
     summarise_licensing,
     Artifact,
 )
+from vitalgraph.acquire import licensing
 from vitalgraph.acquire.licensing import classify_spdx, detect_license
 
 
@@ -66,6 +67,42 @@ def test_agpl_is_not_mistaken_for_gpl():
     """AGPL text contains 'GENERAL PUBLIC LICENSE', so ordering matters."""
     f = detect_license("GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19 November 2007")
     assert f.spdx_id == "AGPL-3.0-only"
+
+
+def test_gpl3_is_not_mistaken_for_agpl_because_it_mentions_agpl():
+    """GPL-3.0 section 13 names the Affero GPL. That is a cross-reference.
+
+    Regression: the first real harvest classified every GPL-3.0 project as
+    AGPL-3.0, because a whole-document search found section 13's wording. A
+    licence names itself at the top and discusses other licences further down,
+    so title matching is confined to the opening of the file.
+    """
+    gpl3 = (
+        "                    GNU GENERAL PUBLIC LICENSE\n"
+        "                       Version 3, 29 June 2007\n\n"
+        + "Preamble and terms and conditions follow.\n"
+        * 400
+        + "  13. Use with the GNU Affero General Public License.\n"
+        "  Notwithstanding any other provision of this License, you have\n"
+        "permission to link or combine any covered work with a work licensed\n"
+        "under version 3 of the GNU Affero General Public License.\n"
+    )
+    assert len(gpl3) > licensing.TITLE_WINDOW_CHARS * 2, "fixture must be long enough"
+
+    finding = detect_license(gpl3)
+    assert finding.spdx_id == "GPL-3.0-only"
+    assert finding.license_class is LicenseClass.COPYLEFT
+
+
+def test_body_only_match_is_reported_with_lower_confidence():
+    """A signature found outside the title block is a weaker signal, and says so."""
+    buried = (
+        "Copyright notice.\n" * 200 + "\nPermission is hereby granted, free of charge"
+    )
+    finding = detect_license(buried)
+    assert finding.spdx_id == "MIT"
+    assert finding.confidence < 0.8
+    assert "document body" in finding.evidence
 
 
 def test_lgpl_is_not_mistaken_for_gpl():
