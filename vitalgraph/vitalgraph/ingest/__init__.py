@@ -1,0 +1,1 @@
+"""VitalGraph ingest package."""
