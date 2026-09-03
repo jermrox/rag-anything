@@ -18,8 +18,16 @@ dependencies = []
 [project.optional-dependencies]
 api = ["fastapi>=0.110", "uvicorn>=0.27", "pydantic>=2.0"]
 rag = ["raganything"]
-harvest = ["httpx>=0.27"]          # M2: acquisition layer
-dev = ["pytest>=7.0", "pytest-asyncio", "httpx>=0.27", "ruff"]
+harvest = ["httpx>=0.27"]          # network harvesters
+ml = ["numpy>=1.24", "scikit-learn>=1.3"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio",
+    "httpx>=0.27",
+    "ruff",
+    "numpy>=1.24",
+    "scikit-learn>=1.3",
+]
 
 [project.scripts]
 vitalgraph-server = "vitalgraph.api.server:main"

@@ -89,3 +89,4 @@ CLAUDE.md
 vitalgraph_data/
 vg_rag_storage/
 *.duckdb
+vitalgraph_models/
