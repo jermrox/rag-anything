@@ -40,8 +40,13 @@ def test_results_are_time_ordered_regardless_of_insert_order(store):
 
 
 def test_span_and_signals(store):
-    store.add([_rr(0, 800.0), _rr(60, 810.0),
-               Sample(ts=utc(30), signal=SignalType.SPO2, value=97.0)])
+    store.add(
+        [
+            _rr(0, 800.0),
+            _rr(60, 810.0),
+            Sample(ts=utc(30), signal=SignalType.SPO2, value=97.0),
+        ]
+    )
     lo, hi = store.span()
     assert lo == utc(0) and hi == utc(60)
     assert set(store.signals()) == {"rr_interval", "spo2"}

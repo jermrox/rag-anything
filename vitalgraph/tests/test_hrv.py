@@ -24,8 +24,8 @@ def test_rmssd_known_vector():
 
 
 def test_pnn50_is_strictly_greater_than_50ms():
-    assert hrv.pnn50([800.0, 850.0] * 10) == 0.0      # exactly 50 does not count
-    assert hrv.pnn50([800.0, 860.0] * 10) == 100.0    # 60 ms does
+    assert hrv.pnn50([800.0, 850.0] * 10) == 0.0  # exactly 50 does not count
+    assert hrv.pnn50([800.0, 860.0] * 10) == 100.0  # 60 ms does
 
 
 def test_sdnn_uses_sample_standard_deviation():

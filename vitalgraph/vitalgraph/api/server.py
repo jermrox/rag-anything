@@ -16,8 +16,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+from ..acquire.base import LicenseClass
 from ..ble import gatt
 from ..ble.simulator import simulate_period
+from ..ingest.pipeline import IngestPipeline
+from ..protocol.extractor import normalise_uuid
 from ..biometrics import hrv
 from ..biometrics.schema import InvalidSample, Sample, SignalType, utc
 from ..biometrics.store import BiometricStore
@@ -38,6 +41,11 @@ app = FastAPI(
 )
 
 _rag: Optional[VitalGraphRAG] = None
+
+#: Code knowledge accumulates across ingestion runs, so the symbol graph and
+#: protocol registry live for the process rather than per request -- their
+#: whole value is what they see across many repositories.
+code = IngestPipeline()
 
 
 def get_rag() -> VitalGraphRAG:
@@ -83,6 +91,16 @@ class SeedPayload(BaseModel):
     nights: int = 7
     recovery: Optional[List[float]] = None
     seed: int = 11
+
+
+class CodeIngestPayload(BaseModel):
+    """Ingest a checkout already on disk."""
+
+    path: str
+    repo: Optional[str] = None
+    ref: Optional[str] = None
+    license_override: Optional[str] = None
+    max_files: int = 2000
 
 
 # --- Routes ----------------------------------------------------------------
@@ -239,6 +257,131 @@ def protocol_derivable(uuids: str) -> Dict[str, Any]:
             u for u in requested if u.upper().replace("0X", "0x") not in derivable
         ],
     }
+
+
+@app.post("/api/code/ingest")
+def code_ingest(payload: CodeIngestPayload) -> Dict[str, Any]:
+    """Chunk, index and mine a local repository.
+
+    The repository's license is detected first and governs whether its source
+    may be reproduced; see ``acquire/base.py``.
+    """
+    override = None
+    if payload.license_override:
+        try:
+            override = LicenseClass(payload.license_override)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"unknown license class: {payload.license_override}",
+            ) from exc
+    try:
+        result = code.ingest_directory(
+            payload.path,
+            repo=payload.repo,
+            ref=payload.ref,
+            license_override=override,
+            max_files=payload.max_files,
+        )
+    except (NotADirectoryError, OSError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {"ingestion": result.summary(), "symbols": code.symbols.stats()}
+
+
+@app.get("/api/code/search")
+def code_search(q: str, limit: int = 20) -> Dict[str, Any]:
+    """Search indexed symbols, widest-implemented first."""
+    return {
+        "query": q,
+        "results": [
+            {
+                "name": n.name,
+                "repos": list(n.repos),
+                "languages": list(n.languages),
+                "definitions": len(n.definitions),
+                "confidence": round(n.confidence, 3),
+                "cross_repo": n.is_cross_repo,
+                "citations": [s.citation() for s in n.definitions[:5]],
+            }
+            for n in code.symbols.search(q, limit=limit)
+        ],
+    }
+
+
+@app.get("/api/code/symbol/{name}")
+def code_symbol(name: str) -> Dict[str, Any]:
+    node = code.symbols.get(name)
+    if node is None:
+        raise HTTPException(status_code=404, detail=f"no indexed symbol named {name!r}")
+    return {
+        "name": node.name,
+        "confidence": round(node.confidence, 3),
+        "cross_repo": node.is_cross_repo,
+        "definitions": [
+            {
+                "citation": s.citation(),
+                "kind": s.kind,
+                "language": s.language,
+                "signature": s.signature,
+                "exact": s.exact,
+            }
+            for s in node.definitions
+        ],
+        "referenced_by": [s.citation() for s in node.referenced_by[:50]],
+    }
+
+
+@app.get("/api/protocol/facts")
+def protocol_facts(uuid: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    """Protocol facts mined from ingested source.
+
+    Without ``uuid``, returns the evidence tally across all mined UUIDs and
+    those corroborated by more than one repository.
+    """
+    if uuid:
+        facts = code.registry.by_uuid(uuid)
+        if not facts:
+            raise HTTPException(status_code=404, detail=f"no facts mined for {uuid}")
+        canonical = normalise_uuid(uuid)
+        return {
+            "uuid": canonical,
+            "derivable": code.registry.derivable_for([uuid]).get(canonical, []),
+            "facts": [
+                {"kind": f.kind, "detail": f.detail, "citation": f.citation()}
+                for f in facts[:limit]
+            ],
+        }
+    return {
+        "evidence": dict(list(code.registry.evidence_count().items())[:limit]),
+        "corroborated": code.registry.corroborated(),
+        "derivable": code.registry.derivable_for(code.registry.uuids()),
+    }
+
+
+@app.post("/api/code/push")
+async def code_push() -> Dict[str, Any]:
+    """Push indexed code knowledge into the knowledge graph."""
+    rag = get_rag()
+    if not code.symbols.stats()["definitions"]:
+        raise HTTPException(status_code=400, detail="No code ingested yet.")
+
+    # Symbol and protocol tables are derived facts, so they are insertable
+    # regardless of the licenses of the repositories they were mined from.
+    content = code.symbols.to_content_list() + code.registry.to_content_list()
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Nothing convergent to insert yet. The symbol table only reports "
+                "symbols seen in two or more repositories; ingest another repo."
+            ),
+        )
+    target = getattr(rag, "_rag", rag)
+    await target.insert_content_list(
+        content_list=content, file_path="code://indexed", doc_id="vg-code-index"
+    )
+    return {"items": len(content), "citation": "code://indexed"}
 
 
 @app.post("/api/demo/seed")

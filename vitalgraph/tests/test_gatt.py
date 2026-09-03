@@ -28,7 +28,9 @@ def test_rr_intervals_use_1024ths_of_a_second():
 
 def test_energy_expended_offsets_rr_block():
     # flags: energy present (0x08) + RR present (0x10)
-    payload = bytes([0x18, 60]) + (500).to_bytes(2, "little") + (512).to_bytes(2, "little")
+    payload = (
+        bytes([0x18, 60]) + (500).to_bytes(2, "little") + (512).to_bytes(2, "little")
+    )
     m = gatt.decode_heart_rate_measurement(payload)
     assert m.energy_expended_kj == 500
     assert m.rr_intervals_ms == [500.0]

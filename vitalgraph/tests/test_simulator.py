@@ -39,8 +39,11 @@ def test_generated_beats_survive_artifact_correction():
 def test_all_signal_channels_present():
     signals = {s.signal for s in simulate_night(utc(0), hours=1.0, seed=1)}
     assert signals == {
-        SignalType.RR_INTERVAL, SignalType.HEART_RATE,
-        SignalType.SLEEP_STAGE, SignalType.SPO2, SignalType.SKIN_TEMPERATURE,
+        SignalType.RR_INTERVAL,
+        SignalType.HEART_RATE,
+        SignalType.SLEEP_STAGE,
+        SignalType.SPO2,
+        SignalType.SKIN_TEMPERATURE,
     }
 
 

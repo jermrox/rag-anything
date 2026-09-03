@@ -80,6 +80,65 @@ curl -X POST localhost:8770/api/rag/ingest
 Without those, every analytics feature still works and the RAG endpoints return
 a clear `503` rather than failing obscurely.
 
+## Reading code at scale
+
+VitalGraph ingests source code as *symbols*, not as flat text. RAG-Anything is
+document-centric and has no notion of a function, so `ingest/code_chunker.py`
+fills that gap: Python is parsed with the standard library `ast` (exact), other
+languages fall back to brace matching (approximate, and **marked as such** —
+a symbol graph that hides uneven extraction quality produces confidently wrong
+cross-repo answers).
+
+```bash
+curl -X POST localhost:8770/api/code/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{"path": "/path/to/checkout", "repo": "vendor/sdk", "ref": "a1b2c3d"}'
+
+curl 'localhost:8770/api/code/search?q=decode'
+curl 'localhost:8770/api/protocol/facts?uuid=0x2A37'
+```
+
+Answers cite `repo@sha:path#L66-L128` — real upstream lines, not opaque chunks.
+
+### The license gate
+
+Every repository's license is identified before a byte of it is indexed, and
+that class decides what may enter the corpus:
+
+| License class | Source verbatim | Protocol / behavioural facts |
+|---|---|---|
+| permissive | ✅ with attribution | ✅ |
+| copyleft | ❌ interface + docs only | ✅ |
+| proprietary / **unknown** | ❌ | ✅ |
+
+Facts — a UUID, a byte layout, which bit is the RR-present flag — are
+interoperability information, not creative expression, and stay usable no
+matter where they were learned. Verbatim copyleft *source* is what stays out,
+because a RAG that ingests GPL code can emit it into a proprietary product.
+An unlicensed repository is gated as strictly as a proprietary one: absence of
+a license is absence of permission.
+
+So a GPL repository still contributes this, and nothing more:
+
+```
+Symbol `decode_heart_rate_measurement` (function) in ble/gatt.py, lines 66-128.
+Signature: def decode_heart_rate_measurement(data: bytes) -> HeartRateMeasurement
+Documented behaviour: byte 0 flags; bit 4 = RR intervals present; uint16 LE …
+Source text withheld under the licensing policy.
+```
+
+### Mining protocol facts
+
+`protocol/extractor.py` recovers wire formats from implementations: UUIDs
+(including SIG UUIDs written in 128-bit form, and vendor-proprietary ones),
+`struct` formats, byte offsets and bit masks, each attributed to the nearest
+preceding UUID. Run against this repository's own `ble/gatt.py` it recovers
+`0x2A37`'s layout unaided — byte 0 is flags, masks `0x01`–`0x10`, `<H`
+little-endian reads. Point it at a vendor SDK and it does the same to theirs.
+
+Facts corroborated across two or more independent repositories are marked as
+such: one project's quirk is not a protocol fact; two agreeing is evidence.
+
 ## Layout
 
 | Path | Role |
@@ -90,7 +149,9 @@ a clear `503` rather than failing obscurely.
 | `vitalgraph/rag.py` | RAGAnything facade + health system prompt |
 | `vitalgraph/api/` | FastAPI backend |
 | `vitalgraph/web/` | single-file, buildless UI with Web Bluetooth |
-| `vitalgraph/{acquire,ingest,protocol}/` | reserved for M2/M3 (see Roadmap) |
+| `vitalgraph/acquire/` | provenance, SPDX detection, **the license gate** |
+| `vitalgraph/ingest/` | symbol-aware code chunking, symbol graph, pipeline |
+| `vitalgraph/protocol/` | BLE protocol-fact mining and registry |
 
 The analytics core depends on **nothing outside the standard library**, so it
 runs and tests anywhere. FastAPI, RAGAnything and the harvesters are extras.
@@ -98,8 +159,11 @@ runs and tests anywhere. FastAPI, RAGAnything and the harvesters are extras.
 ## Tests
 
 ```bash
-cd vitalgraph && pytest tests -q      # 60 tests, no network, no LLM, no hardware
+cd vitalgraph && pytest tests -q      # 143 tests, no network, no LLM, no hardware
 ```
+
+Run per-file if memory is tight — the whole suite in one process can exhaust a
+small container.
 
 `vitalgraph/ble/simulator.py` substitutes for hardware: seeded and deterministic,
 with a `recovery` dial that jointly suppresses HRV, raises resting heart rate and
@@ -112,17 +176,20 @@ which resolves relative to the root and never reaches `vitalgraph/tests/`.
 
 - **M1 — done.** Signal model, store, HRV with artifact correction, GATT
   decoder, simulator, summariser bridge, API, web UI.
-- **M2 — acquisition.** Harvest public BLE/wearable code, Bluetooth SIG specs
-  and literature. Every artifact carries provenance and an SPDX license class;
-  the license gate keeps copyleft *source* out of the corpus while keeping
-  protocol *facts* (UUIDs, byte layouts, algorithms) usable from every source —
-  those are interoperability information, not creative expression. Plus an
-  AST-aware code chunker, since RAG-Anything is document-centric.
-- **M3 — protocol registry.** Mine UUIDs, services, byte-layout decoders and
-  vendor framings into a queryable SQLite registry whose `derivable` table
-  answers "what can this hardware actually measure?" mechanically.
-- **M4 — depth.** Lomb-Scargle LF/HF (correct for unevenly sampled RR series),
-  respiratory rate, sleep staging, readiness, cohort norms, bulk import.
+- **M2 — done.** Symbol-aware code chunking, cross-repository symbol graph,
+  provenance and SPDX license gate, BLE protocol-fact mining, and the API
+  surface for all of it.
+- **M3 — network harvesters.** GitHub code search, Bluetooth SIG specs,
+  arXiv/PubMed, feeding the same gated pipeline.
+- **M4 — machine learning** (`[ml]` extra: numpy + scikit-learn). Multivariate
+  anomaly detection against a personal baseline, recovery forecasting, learned
+  sleep staging and event classification. Note: a stager trained on
+  `ble/simulator.py` learns the simulator, not physiology — it proves the
+  pipeline, and real capability needs Sleep-EDF or MESA with subject-level
+  splits.
+- **M5 — clinical.** Lab/imaging/discharge ingestion, LOINC-coded FHIR
+  observations, evidence-graded decision support, with mode gating, a
+  hash-chained audit log, red-flag escalation and a PHI consent gate.
 
 ## Scope note
 
