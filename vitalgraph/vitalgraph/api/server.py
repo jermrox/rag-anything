@@ -33,6 +33,7 @@ from ..biometrics.schema import InvalidSample, Sample, SignalType, utc
 from ..biometrics.store import BiometricStore
 from ..bridge import summarizer as S
 from ..config import VitalGraphConfig
+from ..llm import ClaudeUnavailable
 from ..rag import RAGAnythingUnavailable, VitalGraphRAG
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -60,7 +61,7 @@ def get_rag() -> VitalGraphRAG:
     if _rag is None:
         try:
             _rag = VitalGraphRAG.from_env(config.rag_working_dir)
-        except RAGAnythingUnavailable as exc:
+        except (RAGAnythingUnavailable, ClaudeUnavailable) as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
     return _rag
 
