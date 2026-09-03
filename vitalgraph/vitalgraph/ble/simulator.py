@@ -20,12 +20,50 @@ from __future__ import annotations
 
 import math
 import random
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Tuple
 
 from ..biometrics.schema import Sample, SignalType, SleepStage
 
 SOURCE = "simulator"
+
+#: SpO2 sampling interval, seconds. Sampling once per minute cannot detect a
+#: 45-second desaturation at all -- the event falls between samples. Real pulse
+#: oximeters stream continuously for exactly this reason, so the generator has
+#: to as well or event detection is untestable by construction.
+SPO2_INTERVAL_S = 5.0
+
+#: Duration of an injected apnea-like episode, seconds. Real obstructive events
+#: last 10-60 s; the desaturation trails the airway event by roughly this long
+#: again, which is why the SpO2 nadir lags the heart-rate response.
+APNEA_DURATION_S = 45.0
+
+#: Points of SpO2 lost at the nadir of an injected episode. A drop of 3-4
+#: points is the conventional scoring threshold for a desaturation event.
+APNEA_DESAT_POINTS = 6.0
+
+#: Duration of an injected irregularity episode, seconds.
+ARRHYTHMIA_DURATION_S = 60.0
+
+#: Fraction by which RR intervals scatter during an irregularity episode. Large
+#: enough to be unmistakable, and large enough that artifact correction will
+#: reject some of it -- which is itself realistic.
+ARRHYTHMIA_SCATTER = 0.28
+
+
+@dataclass(frozen=True)
+class Episode:
+    """An injected physiological event, with its ground-truth window."""
+
+    kind: str
+    """apnea | arrhythmia"""
+    start_s: float
+    end_s: float
+
+    def contains(self, elapsed: float) -> bool:
+        return self.start_s <= elapsed < self.end_s
+
 
 # A full sleep cycle: light -> deep -> light -> REM.
 CYCLE_MINUTES = 90.0
@@ -70,12 +108,37 @@ def _stage_track(
     return track
 
 
+def _plan_episodes(
+    total_seconds: float, apnea_events: int, arrhythmia_events: int, rng: random.Random
+) -> List[Episode]:
+    """Place episodes at non-overlapping random times through the night."""
+    episodes: List[Episode] = []
+    wanted = [("apnea", APNEA_DURATION_S)] * apnea_events + [
+        ("arrhythmia", ARRHYTHMIA_DURATION_S)
+    ] * arrhythmia_events
+
+    for kind, duration in wanted:
+        for _ in range(50):  # bounded retry; give up rather than loop forever
+            begin = rng.uniform(600.0, max(601.0, total_seconds - duration - 600.0))
+            candidate = Episode(kind, begin, begin + duration)
+            if not any(
+                candidate.start_s < e.end_s and e.start_s < candidate.end_s
+                for e in episodes
+            ):
+                episodes.append(candidate)
+                break
+    return sorted(episodes, key=lambda e: e.start_s)
+
+
 def simulate_night(
     start: datetime,
     hours: float = 8.0,
     recovery: float = 1.0,
     seed: int = 0,
-) -> List[Sample]:
+    apnea_events: int = 0,
+    arrhythmia_events: int = 0,
+    return_episodes: bool = False,
+) -> List[Sample] | Tuple[List[Sample], List[Episode]]:
     """Generate one night of biometric samples.
 
     Args:
@@ -84,10 +147,19 @@ def simulate_night(
         recovery: 1.0 = well recovered, 0.0 = badly recovered. Drives HRV
             suppression, resting-HR elevation, temperature and fragmentation.
         seed: RNG seed; identical seeds produce byte-identical output.
+        apnea_events: number of apnea-like episodes to inject. Each drops SpO2
+            by roughly ``APNEA_DESAT_POINTS`` with a compensatory heart-rate
+            rise. Without these the SpO2 channel has no events in it at all, so
+            a desaturation detector cannot be evaluated against this generator.
+        arrhythmia_events: number of irregularity episodes to inject, during
+            which RR intervals scatter well beyond normal variability.
+        return_episodes: also return the ground-truth episode windows, which is
+            what makes event detection measurable rather than merely plausible.
 
     Returns:
         Samples ordered by time, mixing RR intervals, heart rate, SpO2,
-        skin temperature and sleep stage.
+        skin temperature and sleep stage. With ``return_episodes``, a
+        ``(samples, episodes)`` pair.
     """
     if start.tzinfo is None:
         raise ValueError("start must be timezone-aware")
@@ -107,6 +179,14 @@ def simulate_night(
     total_seconds = hours * 3600.0
     last_minute_logged = -1
     stage_track = _stage_track(total_seconds, rng, fragmentation)
+    episodes = _plan_episodes(total_seconds, apnea_events, arrhythmia_events, rng)
+    last_spo2_bucket = -1
+
+    def active(kind: str, at: float) -> Episode | None:
+        for episode in episodes:
+            if episode.kind == kind and episode.contains(at):
+                return episode
+        return None
 
     while elapsed < total_seconds:
         minutes_in = elapsed / 60.0
@@ -138,6 +218,15 @@ def simulate_night(
             * math.sin(2 * math.pi * respiration_hz * elapsed)
         )
         rr = base_rr + rsa + rng.gauss(0.0, beat_noise)
+
+        if active("arrhythmia", elapsed) is not None:
+            rr *= 1.0 + rng.gauss(0.0, ARRHYTHMIA_SCATTER)
+
+        if active("apnea", elapsed) is not None:
+            # Airway events drive a compensatory tachycardia, which appears
+            # before the desaturation reaches the periphery.
+            rr *= 0.90
+
         rr = max(300.0, min(2000.0, rr))
 
         ts = start + timedelta(seconds=elapsed)
@@ -145,7 +234,26 @@ def simulate_night(
             Sample(ts=ts, signal=SignalType.RR_INTERVAL, value=rr, source=SOURCE)
         )
 
-        # Lower-rate channels, once per minute.
+        # SpO2 on its own faster cadence, so short events are observable.
+        spo2_bucket = int(elapsed / SPO2_INTERVAL_S)
+        if spo2_bucket != last_spo2_bucket:
+            last_spo2_bucket = spo2_bucket
+            spo2 = 97.5 - 1.5 * (1 - recovery) + rng.gauss(0, 0.4)
+            apnea = active("apnea", elapsed)
+            if apnea is not None:
+                # Desaturation follows a rough triangle, deepest mid-episode.
+                phase = (elapsed - apnea.start_s) / (apnea.end_s - apnea.start_s)
+                spo2 -= APNEA_DESAT_POINTS * (1.0 - abs(2.0 * phase - 1.0))
+            samples.append(
+                Sample(
+                    ts=ts,
+                    signal=SignalType.SPO2,
+                    value=round(max(50.0, min(100.0, spo2)), 1),
+                    source=SOURCE,
+                )
+            )
+
+        # Remaining low-rate channels, once per minute.
         minute = int(minutes_in)
         if minute != last_minute_logged:
             last_minute_logged = minute
@@ -188,6 +296,8 @@ def simulate_night(
 
         elapsed += rr / 1000.0  # advance by one beat
 
+    if return_episodes:
+        return samples, episodes
     return samples
 
 
