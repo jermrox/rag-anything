@@ -81,5 +81,11 @@ CLAUDE.md
 
 # VitalGraph subproject: the `test_*` rule above would silently drop its tests
 !vitalgraph/tests/test_*.py
-vitalgraph/**/*.duckdb
-vitalgraph/**/vitalgraph_data/
+
+# VitalGraph runtime data. The default config paths are relative to the working
+# directory, so running the server or importing its module from the repository
+# root creates these here rather than under vitalgraph/ -- match them at any
+# depth, not just inside the subproject.
+vitalgraph_data/
+vg_rag_storage/
+*.duckdb
