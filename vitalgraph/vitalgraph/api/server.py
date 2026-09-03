@@ -19,6 +19,13 @@ from pydantic import BaseModel, Field
 from ..acquire.base import LicenseClass
 from ..ble import gatt
 from ..ble.simulator import simulate_period
+from ..devices import catalog as device_catalog
+from ..devices.connector import (
+    DecodedNotification,
+    DeviceNotDirectlyConnectable,
+    UnsupportedCharacteristic,
+    decode_heart_rate_notification,
+)
 from ..ingest.pipeline import IngestPipeline
 from ..protocol.extractor import normalise_uuid
 from ..biometrics import hrv
@@ -356,6 +363,116 @@ def protocol_facts(uuid: Optional[str] = None, limit: int = 50) -> Dict[str, Any
         "evidence": dict(list(code.registry.evidence_count().items())[:limit]),
         "corroborated": code.registry.corroborated(),
         "derivable": code.registry.derivable_for(code.registry.uuids()),
+    }
+
+
+class DeviceGattPayload(BaseModel):
+    """A raw notification from a named, catalogued device."""
+
+    device_id: str
+    hex: str
+    ts_ms: Optional[int] = None
+
+
+@app.get("/api/devices")
+def list_devices(access_mode: Optional[str] = None) -> Dict[str, Any]:
+    """The device catalogue: named products and how -- if at all -- Vybe can
+    reach their sensors.
+
+    This is the mechanical answer to "which devices can this product
+    actually use", split by the reachability class in
+    ``devices/catalog.py``: directly over open BLE, only via the vendor's
+    own cloud API, or not at all today.
+    """
+    devices = device_catalog.DEVICES
+    if access_mode:
+        try:
+            mode = device_catalog.AccessMode(access_mode)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422, detail=f"unknown access_mode: {access_mode}"
+            ) from exc
+        devices = device_catalog.by_access_mode(mode)
+
+    return {
+        "devices": [
+            {
+                "id": d.id,
+                "name": d.name,
+                "vendor": d.vendor,
+                "access_mode": d.access_mode.value,
+                "directly_connectable": d.is_directly_connectable,
+                "gatt_services": list(d.gatt_services),
+                "api_docs_url": d.api_docs_url,
+                "signals_delivered": d.signals_delivered(),
+            }
+            for d in devices
+        ]
+    }
+
+
+@app.get("/api/devices/{device_id}")
+def device_detail(device_id: str) -> Dict[str, Any]:
+    """One device's full profile, including per-signal adequacy.
+
+    Adequacy is computed the same way for every device regardless of vendor
+    or price point: whether its sensors clear each signal's usable minimum,
+    with 'does not deliver this at all' kept distinct from 'delivers it too
+    slowly' -- the same three-valued contract as ``Sensor.meets_minimum``.
+    """
+    try:
+        d = device_catalog.get(device_id)
+    except device_catalog.UnknownDevice as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    delivered = d.signals_delivered()
+    return {
+        "id": d.id,
+        "name": d.name,
+        "vendor": d.vendor,
+        "access_mode": d.access_mode.value,
+        "directly_connectable": d.is_directly_connectable,
+        "gatt_services": list(d.gatt_services),
+        "api_docs_url": d.api_docs_url,
+        "notes": d.notes,
+        "signal_adequacy": {
+            signal_id: {"rate_hz": rate, "meets_minimum": d.meets_minimum(signal_id)}
+            for signal_id, rate in delivered.items()
+        },
+    }
+
+
+@app.post("/api/devices/ingest/gatt")
+def device_gatt_ingest(payload: DeviceGattPayload) -> Dict[str, Any]:
+    """Ingest a raw Heart Rate Measurement notification from a named,
+    catalogued device.
+
+    Distinct from the generic ``/api/ingest/gatt`` path: this one validates
+    the device against the catalogue first, so a notification claimed to be
+    from a device that does not actually advertise this characteristic --
+    or is not directly connectable at all, like a cloud-API-only product --
+    is refused rather than silently accepted.
+    """
+    try:
+        raw = bytes.fromhex(payload.hex.replace(" ", ""))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"invalid hex: {exc}") from exc
+
+    received_at = utc(payload.ts_ms / 1000.0) if payload.ts_ms else None
+    try:
+        decoded: DecodedNotification = decode_heart_rate_notification(
+            payload.device_id, raw, received_at
+        )
+    except device_catalog.UnknownDevice as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (DeviceNotDirectlyConnectable, UnsupportedCharacteristic) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    inserted = store.add(decoded.samples)
+    return {
+        "device_id": payload.device_id,
+        "inserted": inserted,
+        "samples": len(decoded.samples),
     }
 
 
