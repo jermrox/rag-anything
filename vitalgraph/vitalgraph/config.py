@@ -25,16 +25,24 @@ def _env_int(name: str, default: int) -> int:
 class VitalGraphConfig:
     """Runtime configuration for the VitalGraph subproject."""
 
-    data_dir: str = field(default_factory=lambda: _env("VITALGRAPH_DATA_DIR", "./vitalgraph_data"))
+    data_dir: str = field(
+        default_factory=lambda: _env("VITALGRAPH_DATA_DIR", "./vitalgraph_data")
+    )
     """Directory holding the biometric SQLite database."""
 
-    db_path: str = field(default_factory=lambda: _env("VITALGRAPH_DB", "./vitalgraph_data/biometrics.db"))
+    db_path: str = field(
+        default_factory=lambda: _env("VITALGRAPH_DB", "./vitalgraph_data/biometrics.db")
+    )
 
-    rag_working_dir: str = field(default_factory=lambda: _env("VITALGRAPH_RAG_DIR", "./vg_rag_storage"))
+    rag_working_dir: str = field(
+        default_factory=lambda: _env("VITALGRAPH_RAG_DIR", "./vg_rag_storage")
+    )
 
     user: str = field(default_factory=lambda: _env("VITALGRAPH_USER", "default"))
 
-    baseline_nights: int = field(default_factory=lambda: _env_int("VITALGRAPH_BASELINE_NIGHTS", 14))
+    baseline_nights: int = field(
+        default_factory=lambda: _env_int("VITALGRAPH_BASELINE_NIGHTS", 14)
+    )
     """Rolling window used for the personal HRV baseline."""
 
     api_host: str = field(default_factory=lambda: _env("VITALGRAPH_HOST", "127.0.0.1"))

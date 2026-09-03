@@ -96,8 +96,8 @@ def simulate_night(
 
     # Poor recovery: higher resting HR, blunted RSA, warmer skin, broken sleep.
     resting_hr = 62.0 - 8.0 * recovery + 10.0 * (1.0 - recovery)
-    rsa_amplitude = 12.0 + 38.0 * recovery      # ms of RR swing with breathing
-    beat_noise = 4.0 + 6.0 * (1.0 - recovery)   # ms of stochastic variation
+    rsa_amplitude = 12.0 + 38.0 * recovery  # ms of RR swing with breathing
+    beat_noise = 4.0 + 6.0 * (1.0 - recovery)  # ms of stochastic variation
     base_temp = 33.4 + 0.9 * (1.0 - recovery)
     fragmentation = 0.01 + 0.09 * (1.0 - recovery)
     respiration_hz = 0.22 + 0.04 * (1.0 - recovery)  # ~13-16 breaths/min
@@ -132,7 +132,11 @@ def simulate_night(
             SleepStage.REM: 0.70,
             SleepStage.AWAKE: 0.45,
         }[stage]
-        rsa = rsa_amplitude * stage_gain * math.sin(2 * math.pi * respiration_hz * elapsed)
+        rsa = (
+            rsa_amplitude
+            * stage_gain
+            * math.sin(2 * math.pi * respiration_hz * elapsed)
+        )
         rr = base_rr + rsa + rng.gauss(0.0, beat_noise)
         rr = max(300.0, min(2000.0, rr))
 
@@ -146,24 +150,40 @@ def simulate_night(
         if minute != last_minute_logged:
             last_minute_logged = minute
             samples.append(
-                Sample(ts=ts, signal=SignalType.HEART_RATE,
-                       value=round(60000.0 / rr, 1), source=SOURCE)
+                Sample(
+                    ts=ts,
+                    signal=SignalType.HEART_RATE,
+                    value=round(60000.0 / rr, 1),
+                    source=SOURCE,
+                )
             )
             samples.append(
-                Sample(ts=ts, signal=SignalType.SLEEP_STAGE,
-                       value=float(stage.value), source=SOURCE)
+                Sample(
+                    ts=ts,
+                    signal=SignalType.SLEEP_STAGE,
+                    value=float(stage.value),
+                    source=SOURCE,
+                )
             )
             samples.append(
-                Sample(ts=ts, signal=SignalType.SPO2,
-                       value=round(min(100.0, 97.5 - 1.5 * (1 - recovery)
-                                       + rng.gauss(0, 0.4)), 1), source=SOURCE)
+                Sample(
+                    ts=ts,
+                    signal=SignalType.SPO2,
+                    value=round(
+                        min(100.0, 97.5 - 1.5 * (1 - recovery) + rng.gauss(0, 0.4)), 1
+                    ),
+                    source=SOURCE,
+                )
             )
             # Skin temperature follows a shallow nocturnal curve.
             temp_curve = 0.4 * math.sin(math.pi * minutes_in / (hours * 60.0))
             samples.append(
-                Sample(ts=ts, signal=SignalType.SKIN_TEMPERATURE,
-                       value=round(base_temp + temp_curve + rng.gauss(0, 0.05), 2),
-                       source=SOURCE)
+                Sample(
+                    ts=ts,
+                    signal=SignalType.SKIN_TEMPERATURE,
+                    value=round(base_temp + temp_curve + rng.gauss(0, 0.05), 2),
+                    source=SOURCE,
+                )
             )
 
         elapsed += rr / 1000.0  # advance by one beat
@@ -191,8 +211,6 @@ def simulate_period(
     out: List[Sample] = []
     for i, recovery in enumerate(recovery_by_night):
         out.extend(
-            simulate_night(
-                start + timedelta(days=i), recovery=recovery, seed=seed + i
-            )
+            simulate_night(start + timedelta(days=i), recovery=recovery, seed=seed + i)
         )
     return out

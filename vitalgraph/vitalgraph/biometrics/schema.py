@@ -16,12 +16,12 @@ from typing import Any, Dict, Iterable, List
 class SignalType(str, Enum):
     """Physiological quantities VitalGraph stores."""
 
-    HEART_RATE = "heart_rate"          # bpm
-    RR_INTERVAL = "rr_interval"        # ms, beat-to-beat
-    SPO2 = "spo2"                      # percent
-    SKIN_TEMPERATURE = "skin_temp"     # degrees C
-    ACCEL_MAGNITUDE = "accel_mag"      # g
-    SLEEP_STAGE = "sleep_stage"        # SleepStage value, as float
+    HEART_RATE = "heart_rate"  # bpm
+    RR_INTERVAL = "rr_interval"  # ms, beat-to-beat
+    SPO2 = "spo2"  # percent
+    SKIN_TEMPERATURE = "skin_temp"  # degrees C
+    ACCEL_MAGNITUDE = "accel_mag"  # g
+    SLEEP_STAGE = "sleep_stage"  # SleepStage value, as float
 
 
 class SleepStage(float, Enum):

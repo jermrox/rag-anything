@@ -34,8 +34,13 @@ CHAR_PLX_CONTINUOUS = "0x2A5F"
 RR_UNITS_PER_SECOND = 1024.0
 
 BODY_SENSOR_LOCATIONS = {
-    0: "Other", 1: "Chest", 2: "Wrist", 3: "Finger",
-    4: "Hand", 5: "Ear Lobe", 6: "Foot",
+    0: "Other",
+    1: "Chest",
+    2: "Wrist",
+    3: "Finger",
+    4: "Hand",
+    5: "Ear Lobe",
+    6: "Foot",
 }
 
 
@@ -96,7 +101,9 @@ def decode_heart_rate_measurement(data: bytes) -> HeartRateMeasurement:
     energy: int | None = None
     if energy_present:
         if len(data) < offset + 2:
-            raise DecodeError("0x2A37 declares energy expended but payload is truncated")
+            raise DecodeError(
+                "0x2A37 declares energy expended but payload is truncated"
+            )
         energy = struct.unpack_from("<H", data, offset)[0]
         offset += 2
 
@@ -168,7 +175,9 @@ DERIVABLE_FROM: Dict[str, List[str]] = {
     CHAR_HEART_RATE_MEASUREMENT: [
         "heart_rate",
         "rr_intervals (if flag bit 4 set)",
-        "rmssd", "sdnn", "pnn50",
+        "rmssd",
+        "sdnn",
+        "pnn50",
         "respiratory_rate (via RSA)",
         "readiness/recovery score",
         "sleep staging (with accelerometer)",

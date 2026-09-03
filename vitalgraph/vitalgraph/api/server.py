@@ -120,7 +120,9 @@ def ingest_stream(payload: StreamPayload) -> Dict[str, int]:
                 )
             )
         except (InvalidSample, ValueError) as exc:
-            raise HTTPException(status_code=422, detail=f"{item.signal}: {exc}") from exc
+            raise HTTPException(
+                status_code=422, detail=f"{item.signal}: {exc}"
+            ) from exc
     return {"inserted": store.add(samples), "received": len(samples)}
 
 
@@ -143,8 +145,12 @@ def ingest_gatt(payload: GattPayload) -> Dict[str, Any]:
     ts_ms = payload.ts_ms or int(datetime.now(timezone.utc).timestamp() * 1000)
     base = utc(ts_ms / 1000.0)
     samples = [
-        Sample(ts=base, signal=SignalType.HEART_RATE,
-               value=float(measurement.heart_rate_bpm), source=payload.source)
+        Sample(
+            ts=base,
+            signal=SignalType.HEART_RATE,
+            value=float(measurement.heart_rate_bpm),
+            source=payload.source,
+        )
     ]
     # RR intervals are stamped backwards from the notification time, since they
     # describe beats that already happened.
@@ -152,8 +158,12 @@ def ingest_gatt(payload: GattPayload) -> Dict[str, Any]:
     for rr in reversed(measurement.rr_intervals_ms):
         offset += rr
         samples.append(
-            Sample(ts=base - timedelta(milliseconds=offset),
-                   signal=SignalType.RR_INTERVAL, value=rr, source=payload.source)
+            Sample(
+                ts=base - timedelta(milliseconds=offset),
+                signal=SignalType.RR_INTERVAL,
+                value=rr,
+                source=payload.source,
+            )
         )
     return {
         "inserted": store.add(samples),
@@ -167,7 +177,10 @@ def metrics(nights: int = 7, hour: int = 0) -> Dict[str, Any]:
     """Nightly summaries with a rolling personal baseline."""
     span = store.span()
     if span is None:
-        return {"periods": [], "message": "No data yet. Seed the demo or connect a device."}
+        return {
+            "periods": [],
+            "message": "No data yet. Seed the demo or connect a device.",
+        }
 
     first = span[0].replace(hour=hour, minute=0, second=0, microsecond=0)
     available = int((span[1] - first).total_seconds() // 86400) + 1
@@ -177,8 +190,12 @@ def metrics(nights: int = 7, hour: int = 0) -> Dict[str, Any]:
     out = []
     for pid, start, end in windows:
         summ = S.summarize_period(
-            store, start, end, pid, user=config.user,
-            rmssd_baseline=baseline[-config.baseline_nights:],
+            store,
+            start,
+            end,
+            pid,
+            user=config.user,
+            rmssd_baseline=baseline[-config.baseline_nights :],
         )
         # A window without enough beats has no computable HRV. Emitting it
         # would put a 0 ms point on the chart, and "no data" rendered as zero
@@ -244,7 +261,9 @@ def demo_seed(payload: SeedPayload) -> Dict[str, Any]:
         hour=0, minute=0, second=0, microsecond=0
     ) - timedelta(days=nights)
     inserted = store.add(
-        simulate_period(start, nights=nights, recovery_by_night=recovery, seed=payload.seed)
+        simulate_period(
+            start, nights=nights, recovery_by_night=recovery, seed=payload.seed
+        )
     )
     return {"inserted": inserted, "nights": nights, "recovery": recovery}
 
@@ -265,8 +284,12 @@ async def rag_ingest(nights: int = 14) -> Dict[str, Any]:
     summaries = []
     for pid, start, end in windows:
         summ = S.summarize_period(
-            store, start, end, pid, user=config.user,
-            rmssd_baseline=baseline[-config.baseline_nights:],
+            store,
+            start,
+            end,
+            pid,
+            user=config.user,
+            rmssd_baseline=baseline[-config.baseline_nights :],
         )
         if summ.metrics.n_beats:
             baseline.append(summ.metrics.rmssd_ms)

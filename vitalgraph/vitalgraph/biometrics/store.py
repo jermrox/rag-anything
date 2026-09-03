@@ -92,7 +92,11 @@ class BiometricStore:
             cur = self._conn.execute(
                 "SELECT ts_ms, value, source FROM samples"
                 " WHERE signal = ? AND ts_ms >= ? AND ts_ms < ? ORDER BY ts_ms",
-                (signal.value, int(start.timestamp() * 1000), int(end.timestamp() * 1000)),
+                (
+                    signal.value,
+                    int(start.timestamp() * 1000),
+                    int(end.timestamp() * 1000),
+                ),
             )
             rows = cur.fetchall()
         return [
