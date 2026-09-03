@@ -78,3 +78,8 @@ memory-bank/
 .claude/
 .cursor/
 CLAUDE.md
+
+# VitalGraph subproject: the `test_*` rule above would silently drop its tests
+!vitalgraph/tests/test_*.py
+vitalgraph/**/*.duckdb
+vitalgraph/**/vitalgraph_data/

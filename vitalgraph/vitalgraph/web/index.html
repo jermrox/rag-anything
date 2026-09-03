@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VitalGraph</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f4f2;
+    --surface-1: #fcfcfb;
+    --surface-2: #ebebe7;
+    --border:    #d9d9d3;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #78776f;
+    --series-1: #2a78d6;
+    --series-1-soft: #cde2fb;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+    --grid: #e4e4de;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-0: #121211;
+      --surface-1: #1a1a19;
+      --surface-2: #242422;
+      --border:    #35352f;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #8f8e84;
+      --series-1: #3987e5;
+      --series-1-soft: #184f95;
+      --grid: #2b2b27;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #121211; --surface-1: #1a1a19; --surface-2: #242422;
+    --border: #35352f; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+    --text-muted: #8f8e84; --series-1: #3987e5; --series-1-soft: #184f95;
+    --grid: #2b2b27;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--surface-0); color: var(--text-primary);
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; background: var(--surface-1);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10;
+  }
+  .brand { font-weight: 650; font-size: 16px; letter-spacing: -0.01em; }
+  .brand span { color: var(--series-1); }
+  .spacer { flex: 1; }
+  button {
+    font: inherit; font-weight: 550; padding: 7px 13px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-primary); cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--series-1); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 11px; padding: 16px;
+  }
+  h2 { margin: 0 0 3px; font-size: 14px; font-weight: 620; }
+  .sub { margin: 0 0 14px; color: var(--text-muted); font-size: 12.5px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 11px; padding: 14px 16px; }
+  .tile .label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .tile .value { font-size: 27px; font-weight: 640; letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tile .unit { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-left: 3px; }
+  .tile .note { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+    font-weight: 580; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface-2);
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .chart-wrap { position: relative; }
+  canvas { display: block; width: 100%; touch-action: none; }
+  #tooltip {
+    position: absolute; pointer-events: none; opacity: 0; transition: opacity .1s;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12.5px; box-shadow: 0 6px 20px rgba(0,0,0,.16);
+    min-width: 150px; z-index: 5;
+  }
+  #tooltip .t-date { font-weight: 620; margin-bottom: 4px; }
+  #tooltip .t-row { display: flex; justify-content: space-between; gap: 14px; color: var(--text-secondary); }
+  #tooltip .t-row b { color: var(--text-primary); font-variant-numeric: tabular-nums; font-weight: 560; }
+  .grid2 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  pre.narrative {
+    white-space: pre-wrap; font: inherit; margin: 0; color: var(--text-secondary);
+    background: var(--surface-2); border-radius: 8px; padding: 12px; max-height: 260px; overflow: auto;
+  }
+  .chat-log { max-height: 300px; overflow: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+  .msg { padding: 9px 11px; border-radius: 9px; font-size: 13.5px; white-space: pre-wrap; }
+  .msg.you { background: var(--series-1); color: #fff; align-self: flex-end; max-width: 85%; }
+  .msg.vg { background: var(--surface-2); color: var(--text-primary); }
+  .msg.err { background: var(--surface-2); color: var(--critical); border: 1px solid var(--critical); }
+  .row { display: flex; gap: 8px; }
+  input[type=text] {
+    flex: 1; font: inherit; padding: 8px 11px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface-0); color: var(--text-primary);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 560; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll-x { overflow-x: auto; }
+  .status-line { font-size: 12.5px; color: var(--text-muted); }
+  code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Vital<span>Graph</span></div>
+  <span class="badge" id="conn"><span class="dot" style="background:var(--text-muted)"></span>No device</span>
+  <div class="spacer"></div>
+  <button id="btn-ble" class="primary">Connect BLE device</button>
+  <button id="btn-seed">Seed demo data</button>
+  <button id="btn-theme" title="Toggle theme">Theme</button>
+</header>
+
+<main>
+  <div class="tiles" id="tiles"></div>
+
+  <div class="card">
+    <h2>Heart-rate variability by night</h2>
+    <p class="sub">RMSSD in milliseconds, with your personal baseline band. Hover a night for detail; click to read its summary.</p>
+    <div class="chart-wrap">
+      <canvas id="chart" height="300"></canvas>
+      <div id="tooltip"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Night summary</h2>
+      <p class="sub" id="narrative-sub">Select a night in the chart above.</p>
+      <pre class="narrative" id="narrative">No data loaded yet. Connect a device or seed the demo.</pre>
+    </div>
+
+    <div class="card">
+      <h2>Ask your data</h2>
+      <p class="sub">Answers are grounded in your own nights, cited by date.</p>
+      <div class="chat-log" id="chat"></div>
+      <div class="row">
+        <input type="text" id="q" placeholder="Why was my recovery bad last week?">
+        <button id="btn-ask" class="primary">Ask</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="live-card" hidden>
+    <h2>Live stream</h2>
+    <p class="sub">Beat-to-beat intervals decoded from GATT characteristic <code>0x2A37</code>.</p>
+    <div class="chart-wrap"><canvas id="live" height="150"></canvas></div>
+    <p class="status-line" id="live-status">Waiting for notifications…</p>
+  </div>
+
+  <div class="card">
+    <h2>What this device can measure</h2>
+    <p class="sub">Health signals derivable from the advertised GATT characteristics.</p>
+    <div class="scroll-x"><table id="derivable"><tbody>
+      <tr><td class="status-line">Connect a device, or seed the demo to see the standard heart-rate profile.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2>All nights</h2>
+    <div class="scroll-x"><table id="table"><tbody></tbody></table></div>
+  </div>
+</main>
+
+<script>
+const VERDICT_STATUS = {
+  "poor recovery":          { color: "var(--critical)", icon: "▼▼" },
+  "below-average recovery": { color: "var(--serious)",  icon: "▼"  },
+  "typical recovery":       { color: "var(--text-muted)", icon: "■" },
+  "above-average recovery": { color: "var(--good)",     icon: "▲"  },
+  "strong recovery":        { color: "var(--good)",     icon: "▲▲" },
+  "no baseline yet":        { color: "var(--text-muted)", icon: "…" },
+  "insufficient data":      { color: "var(--warning)",  icon: "!"  },
+};
+const status = v => VERDICT_STATUS[v] || VERDICT_STATUS["insufficient data"];
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+let periods = [], selected = -1, hovered = -1;
+
+// ---------- data ----------
+async function loadMetrics() {
+  const r = await fetch("/api/metrics?nights=30");
+  const d = await r.json();
+  periods = d.periods || [];
+  if (periods.length) {
+    selected = periods.length - 1;
+    // Stored data implies a heart-rate-profile device, so show what that
+    // profile makes computable without waiting for a live connection.
+    showDerivable(["0x2A37", "0x2A19"]);
+  }
+  renderAll();
+}
+
+function renderAll() { renderTiles(); drawChart(); renderNarrative(); renderTable(); }
+
+function renderTiles() {
+  const el = document.getElementById("tiles");
+  if (!periods.length) { el.innerHTML = ""; return; }
+  const p = periods[periods.length - 1];
+  const m = p.metrics, s = status(p.verdict);
+  const dz = p.rmssd_z === null || p.rmssd_z === undefined ? null : p.rmssd_z;
+  el.innerHTML = `
+    <div class="tile">
+      <div class="label">Latest RMSSD</div>
+      <div class="value">${m.rmssd_ms.toFixed(1)}<span class="unit">ms</span></div>
+      <div class="note">${p.rmssd_baseline ? `baseline ${p.rmssd_baseline.toFixed(1)} ms` : "building baseline"}</div>
+    </div>
+    <div class="tile">
+      <div class="label">Resting HR</div>
+      <div class="value">${m.mean_hr_bpm.toFixed(0)}<span class="unit">bpm</span></div>
+      <div class="note">${m.n_beats.toLocaleString()} beats analysed</div>
+    </div>
+    <div class="tile">
+      <div class="label">Sleep</div>
+      <div class="value">${(p.sleep_minutes / 60).toFixed(1)}<span class="unit">h</span></div>
+      <div class="note">${Object.entries(p.stage_minutes).filter(([k])=>k!=="awake").map(([k,v])=>`${k} ${Math.round(v)}m`).join(" · ") || "—"}</div>
+    </div>
+    <div class="tile">
+      <div class="label">Assessment</div>
+      <div class="value" style="font-size:19px;color:${s.color}">${s.icon} ${p.verdict}</div>
+      <div class="note">${dz === null ? "no baseline yet" : `z = ${dz >= 0 ? "+" : ""}${dz.toFixed(2)} vs your baseline`}</div>
+    </div>`;
+}
+
+// ---------- main chart ----------
+function drawChart() {
+  const cv = document.getElementById("chart");
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = 300;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  if (!periods.length) return;
+
+  const pad = { l: 46, r: 18, t: 14, b: 34 };
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const vals = periods.map(p => p.metrics.rmssd_ms);
+  const base = periods.map(p => p.rmssd_baseline).filter(v => v);
+  const lo = Math.max(0, Math.min(...vals, ...base) * 0.82);
+  const hi = Math.max(...vals, ...base, 1) * 1.12;
+  const X = i => pad.l + (periods.length === 1 ? iw / 2 : (i / (periods.length - 1)) * iw);
+  const Y = v => pad.t + ih - ((v - lo) / (hi - lo)) * ih;
+
+  // recessive grid + y axis
+  g.strokeStyle = css("--grid"); g.lineWidth = 1;
+  g.fillStyle = css("--text-muted"); g.font = "11px ui-sans-serif, system-ui";
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const v = lo + (hi - lo) * (i / ticks), y = Math.round(Y(v)) + 0.5;
+    g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke();
+    g.textAlign = "right"; g.textBaseline = "middle";
+    g.fillText(v.toFixed(0), pad.l - 8, y);
+  }
+  g.save(); g.translate(13, pad.t + ih / 2); g.rotate(-Math.PI / 2);
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText("RMSSD (ms)", 0, 0); g.restore();
+
+  // baseline band (personal norm), drawn behind the series
+  const bandPts = periods.map((p, i) => ({ i, b: p.rmssd_baseline })).filter(o => o.b);
+  if (bandPts.length > 1) {
+    g.fillStyle = css("--series-1-soft"); g.globalAlpha = 0.30;
+    g.beginPath();
+    bandPts.forEach((o, k) => { const y = Y(o.b * 1.10); k ? g.lineTo(X(o.i), y) : g.moveTo(X(o.i), y); });
+    for (let k = bandPts.length - 1; k >= 0; k--) g.lineTo(X(bandPts[k].i), Y(bandPts[k].b * 0.90));
+    g.closePath(); g.fill(); g.globalAlpha = 1;
+  }
+
+  // series line: 2px, single series so no legend needed
+  g.strokeStyle = css("--series-1"); g.lineWidth = 2;
+  g.lineJoin = "round"; g.lineCap = "round";
+  g.beginPath();
+  periods.forEach((p, i) => { const x = X(i), y = Y(p.metrics.rmssd_ms); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.stroke();
+
+  // markers >=8px, status-coloured, 2px surface ring so overlaps stay legible
+  periods.forEach((p, i) => {
+    const x = X(i), y = Y(p.metrics.rmssd_ms);
+    const isFocus = i === hovered || i === selected;
+    g.beginPath(); g.arc(x, y, isFocus ? 6.5 : 4.5, 0, Math.PI * 2);
+    g.fillStyle = status(p.verdict).color; g.fill();
+    g.lineWidth = 2; g.strokeStyle = css("--surface-1"); g.stroke();
+  });
+
+  // x labels: first, last, and any focused point (never every point)
+  g.fillStyle = css("--text-muted"); g.font = "11px ui-sans-serif, system-ui";
+  g.textBaseline = "top";
+  const show = new Set([0, periods.length - 1, hovered, selected].filter(i => i >= 0));
+  show.forEach(i => {
+    g.textAlign = i === 0 ? "left" : i === periods.length - 1 ? "right" : "center";
+    g.fillText(periods[i].date.slice(5), X(i), pad.t + ih + 9);
+  });
+
+  // direct label on the latest value (selective, not on every point)
+  const li = periods.length - 1;
+  g.fillStyle = css("--text-primary"); g.font = "600 12px ui-sans-serif, system-ui";
+  g.textAlign = "right"; g.textBaseline = "bottom";
+  g.fillText(periods[li].metrics.rmssd_ms.toFixed(0) + " ms", X(li) - 9, Y(periods[li].metrics.rmssd_ms) - 8);
+
+  // crosshair for the hovered night
+  if (hovered >= 0) {
+    g.strokeStyle = css("--text-muted"); g.globalAlpha = .45;
+    g.setLineDash([3, 3]); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(X(hovered), pad.t); g.lineTo(X(hovered), pad.t + ih); g.stroke();
+    g.setLineDash([]); g.globalAlpha = 1;
+  }
+}
+
+function nearestIndex(clientX) {
+  const cv = document.getElementById("chart"), r = cv.getBoundingClientRect();
+  const W = cv.clientWidth, pad = { l: 46, r: 18 }, iw = W - pad.l - pad.r;
+  const x = clientX - r.left;
+  if (periods.length < 2) return periods.length ? 0 : -1;
+  const i = Math.round(((x - pad.l) / iw) * (periods.length - 1));
+  return Math.max(0, Math.min(periods.length - 1, i));
+}
+
+const chart = document.getElementById("chart"), tip = document.getElementById("tooltip");
+chart.addEventListener("pointermove", e => {
+  if (!periods.length) return;
+  hovered = nearestIndex(e.clientX);
+  const p = periods[hovered], m = p.metrics, s = status(p.verdict);
+  tip.innerHTML = `<div class="t-date">${p.date}</div>
+    <div class="t-row"><span>RMSSD</span><b>${m.rmssd_ms.toFixed(1)} ms</b></div>
+    <div class="t-row"><span>Resting HR</span><b>${m.mean_hr_bpm.toFixed(0)} bpm</b></div>
+    <div class="t-row"><span>Sleep</span><b>${(p.sleep_minutes / 60).toFixed(1)} h</b></div>
+    <div class="t-row"><span>Assessment</span><b style="color:${s.color}">${p.verdict}</b></div>`;
+  const r = chart.getBoundingClientRect();
+  tip.style.opacity = 1;
+  tip.style.left = Math.min(chart.clientWidth - 175, Math.max(0, e.clientX - r.left + 14)) + "px";
+  tip.style.top = Math.max(0, e.clientY - r.top - 10) + "px";
+  drawChart();
+});
+chart.addEventListener("pointerleave", () => { hovered = -1; tip.style.opacity = 0; drawChart(); });
+chart.addEventListener("click", e => { selected = nearestIndex(e.clientX); renderNarrative(); drawChart(); });
+window.addEventListener("resize", () => { drawChart(); drawLive(); });
+
+function renderNarrative() {
+  if (selected < 0 || !periods[selected]) return;
+  const p = periods[selected];
+  document.getElementById("narrative-sub").innerHTML =
+    `<code>${p.citation}</code> — the citation an answer points at.`;
+  document.getElementById("narrative").textContent = p.narrative;
+}
+
+function renderTable() {
+  const tb = document.querySelector("#table tbody");
+  if (!periods.length) { tb.innerHTML = ""; return; }
+  tb.innerHTML = `<tr><th>Date</th><th>Assessment</th><th class="num">RMSSD</th><th class="num">SDNN</th>
+      <th class="num">HR</th><th class="num">Sleep</th><th class="num">Coverage</th></tr>` +
+    periods.map((p, i) => {
+      const m = p.metrics, s = status(p.verdict);
+      return `<tr style="cursor:pointer" onclick="selected=${i};renderNarrative();drawChart()">
+        <td>${p.date}</td>
+        <td><span class="dot" style="display:inline-block;background:${s.color}"></span> ${p.verdict}</td>
+        <td class="num">${m.rmssd_ms.toFixed(1)}</td>
+        <td class="num">${m.sdnn_ms.toFixed(1)}</td>
+        <td class="num">${m.mean_hr_bpm.toFixed(0)}</td>
+        <td class="num">${(p.sleep_minutes / 60).toFixed(1)} h</td>
+        <td class="num">${(m.coverage * 100).toFixed(0)}%</td></tr>`;
+    }).join("");
+}
+
+// ---------- live BLE ----------
+let liveRR = [], liveHR = null;
+function drawLive() {
+  const cv = document.getElementById("live");
+  if (cv.offsetParent === null) return;
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = 150;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  if (liveRR.length < 2) return;
+  const pts = liveRR.slice(-160);
+  const lo = Math.min(...pts) * 0.98, hi = Math.max(...pts) * 1.02;
+  g.strokeStyle = css("--series-1"); g.lineWidth = 2; g.lineJoin = "round";
+  g.beginPath();
+  pts.forEach((v, i) => {
+    const x = (i / (pts.length - 1)) * (W - 8) + 4;
+    const y = 12 + (H - 24) - ((v - lo) / (hi - lo || 1)) * (H - 24);
+    i ? g.lineTo(x, y) : g.moveTo(x, y);
+  });
+  g.stroke();
+}
+
+async function connectBLE() {
+  if (!navigator.bluetooth) {
+    alert("Web Bluetooth is unavailable. Use Chrome or Edge over HTTPS or localhost.");
+    return;
+  }
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: ["heart_rate"] }],
+      optionalServices: ["battery_service", "device_information"],
+    });
+    setConn(`${device.name || "device"} — connecting`, "var(--warning)");
+    const server = await device.gatt.connect();
+    const svc = await server.getPrimaryService("heart_rate");
+    const ch = await svc.getCharacteristic("heart_rate_measurement");
+    await ch.startNotifications();
+    ch.addEventListener("characteristicvaluechanged", onNotify);
+    device.addEventListener("gattserverdisconnected", () => setConn("Disconnected", "var(--critical)"));
+    setConn(`${device.name || "device"} — streaming`, "var(--good)");
+    document.getElementById("live-card").hidden = false;
+    showDerivable(["0x2A37"]);
+  } catch (e) { setConn("Connection failed", "var(--critical)"); console.error(e); }
+}
+
+function setConn(text, color) {
+  document.getElementById("conn").innerHTML =
+    `<span class="dot" style="background:${color}"></span>${text}`;
+}
+
+// Decode 0x2A37 in the browser, mirroring vitalgraph/ble/gatt.py.
+function decodeHRM(dv) {
+  const flags = dv.getUint8(0);
+  const hr16 = flags & 0x01, energy = flags & 0x08, rrPresent = flags & 0x10;
+  let off = 1, hr;
+  if (hr16) { hr = dv.getUint16(off, true); off += 2; } else { hr = dv.getUint8(off); off += 1; }
+  if (energy) off += 2;
+  const rr = [];
+  if (rrPresent) for (; off + 1 < dv.byteLength; off += 2) rr.push(dv.getUint16(off, true) * 1000 / 1024);
+  return { hr, rr };
+}
+
+let pending = [];
+function onNotify(ev) {
+  const { hr, rr } = decodeHRM(ev.target.value);
+  liveHR = hr; liveRR.push(...rr);
+  const now = Date.now();
+  pending.push({ ts_ms: now, signal: "heart_rate", value: hr, source: "ble:0x2A37" });
+  let back = 0;
+  for (let i = rr.length - 1; i >= 0; i--) {
+    back += rr[i];
+    pending.push({ ts_ms: Math.round(now - back), signal: "rr_interval", value: rr[i], source: "ble:0x2A37" });
+  }
+  document.getElementById("live-status").textContent =
+    `${hr} bpm · ${liveRR.length} beat intervals received` + (rr.length ? "" : " · device is not sending RR intervals");
+  drawLive();
+  if (pending.length >= 20) flush();
+}
+
+async function flush() {
+  if (!pending.length) return;
+  const batch = pending; pending = [];
+  try {
+    await fetch("/api/ingest/stream", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ samples: batch }),
+    });
+  } catch (e) { console.error(e); }
+}
+setInterval(flush, 10000);
+
+async function showDerivable(uuids) {
+  const r = await fetch("/api/protocol/derivable?uuids=" + encodeURIComponent(uuids.join(",")));
+  const d = await r.json();
+  const rows = Object.entries(d.derivable);
+  document.querySelector("#derivable tbody").innerHTML = rows.length
+    ? `<tr><th>Characteristic</th><th>Signals it makes computable</th></tr>` +
+      rows.map(([u, sigs]) => `<tr><td><code>${u}</code></td><td>${sigs.join(", ")}</td></tr>`).join("")
+    : `<tr><td class="status-line">No recognised health characteristics.</td></tr>`;
+}
+
+// ---------- chat ----------
+function say(text, cls) {
+  const log = document.getElementById("chat");
+  const d = document.createElement("div");
+  d.className = "msg " + cls; d.textContent = text;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+  return d;
+}
+
+async function ask() {
+  const input = document.getElementById("q");
+  const q = input.value.trim(); if (!q) return;
+  input.value = ""; say(q, "you");
+  const thinking = say("…", "vg");
+  try {
+    const r = await fetch("/api/query", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q }),
+    });
+    const d = await r.json();
+    thinking.remove();
+    if (!r.ok) { say(d.detail || "Query failed.", "err"); return; }
+    say(d.answer, "vg");
+  } catch (e) { thinking.remove(); say(String(e), "err"); }
+}
+
+// ---------- wiring ----------
+document.getElementById("btn-ble").onclick = connectBLE;
+document.getElementById("btn-ask").onclick = ask;
+document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
+document.getElementById("btn-theme").onclick = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : cur === "light" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", next);
+  drawChart(); drawLive();
+};
+document.getElementById("btn-seed").onclick = async () => {
+  const b = document.getElementById("btn-seed");
+  b.disabled = true; b.textContent = "Seeding…";
+  await fetch("/api/demo/seed", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nights: 10 }),
+  });
+  await loadMetrics(); showDerivable(["0x2A37", "0x2A19"]);
+  b.disabled = false; b.textContent = "Seed demo data";
+};
+
+loadMetrics();
+</script>
+</body>
+</html>
