@@ -240,6 +240,8 @@ DOMAINS: Tuple[Domain, ...] = (
             "polysomnography scoring criteria",
             "actigraphy " "validation",
             "HRV-based sleep staging",
+            "deep slow-wave and REM stage proportions",
+            "sleep fragmentation and awakenings",
             "circadian " "phase markers",
             "light exposure and entrainment",
         ),
