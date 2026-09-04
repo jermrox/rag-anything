@@ -90,3 +90,7 @@ vitalgraph_data/
 vg_rag_storage/
 *.duckdb
 vitalgraph_models/
+
+# PhysioNet records are downloaded on demand, not vendored: half a gigabyte
+# of patient recordings whose licence stays with PhysioNet.
+vitalgraph/**/physionet-cache/
