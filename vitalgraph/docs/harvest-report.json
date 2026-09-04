@@ -1,11 +1,11 @@
 {
-  "repositories_harvested": 10,
+  "repositories_harvested": 13,
   "repositories_failed": 0,
-  "total_chunks": 7606,
+  "total_chunks": 8986,
   "total_protocol_facts": 1336,
   "policy_breakdown": {
-    "verbatim": 8,
-    "facts_only": 2
+    "verbatim": 10,
+    "facts_only": 3
   },
   "verbatim_permitted": [
     "bleak",
@@ -15,11 +15,14 @@
     "NeuroKit",
     "heartrate_analysis_python",
     "wfdb-python",
+    "yasa",
+    "deepsleepnet",
     "client-py"
   ],
   "facts_only": [
     "openhaystack",
-    "hrv-analysis"
+    "hrv-analysis",
+    "sleep_classifiers"
   ],
   "license_mismatches": [],
   "repositories": [
@@ -200,6 +203,63 @@
       "protocol_facts": 0,
       "languages": [
         "javascript",
+        "python"
+      ]
+    },
+    {
+      "name": "sleep_classifiers",
+      "category": "sleep_staging",
+      "url": "https://github.com/ojwalch/sleep_classifiers.git",
+      "commit": "ec9704f0290563016adbe48184365ab102daf9ea",
+      "citation_ref": "sleep_classifiers@ec9704f",
+      "reused_checkout": true,
+      "expected_spdx": null,
+      "detected_spdx": null,
+      "license_matches_expectation": null,
+      "policy": "facts_only",
+      "files_ingested": 125,
+      "chunks": 501,
+      "exact_chunks": 501,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "yasa",
+      "category": "sleep_staging",
+      "url": "https://github.com/raphaelvallat/yasa.git",
+      "commit": "dfddbd5a7ff622de494365803a4494a2a9dba714",
+      "citation_ref": "yasa@dfddbd5",
+      "reused_checkout": true,
+      "expected_spdx": "BSD-3-Clause",
+      "detected_spdx": "BSD-3-Clause",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 29,
+      "chunks": 494,
+      "exact_chunks": 494,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "deepsleepnet",
+      "category": "sleep_staging",
+      "url": "https://github.com/akaraspt/deepsleepnet.git",
+      "commit": "eb72f9b27af54e6caa1f1bd89a285c58ebfe7779",
+      "citation_ref": "deepsleepnet@eb72f9b",
+      "reused_checkout": true,
+      "expected_spdx": "Apache-2.0",
+      "detected_spdx": "Apache-2.0",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 29,
+      "chunks": 385,
+      "exact_chunks": 385,
+      "protocol_facts": 0,
+      "languages": [
         "python"
       ]
     },

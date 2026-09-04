@@ -115,6 +115,26 @@ def test_proprietary_notice_is_detected():
     assert f.license_class is LicenseClass.PROPRIETARY
 
 
+def test_a_readme_claiming_a_licence_is_not_a_licence():
+    """Prose asserting a licence, with no licence text, stays UNKNOWN.
+
+    Found in the real harvest: sleep_classifiers ships no LICENSE file and
+    states "under an MIT license" in its README. Treating that as a grant
+    would be the gate failing open on the say-so of a sentence, so the
+    conservative resolution is the correct one -- the repository contributes
+    its methods, not its source.
+    """
+    readme = (
+        "# Sleep classifiers\n\n"
+        "Code for staging sleep from wrist motion and heart rate.\n\n"
+        "## License\n\n"
+        "This software is open source and under an MIT license.\n"
+    )
+    finding = detect_license(readme)
+    assert finding.license_class is LicenseClass.UNKNOWN
+    assert policy_for(finding.license_class) is UsePolicy.FACTS_ONLY
+
+
 def test_unrecognised_text_is_unknown_not_permissive():
     """Failing open here would silently defeat the entire gate."""
     f = detect_license("this file contains no license information at all")
