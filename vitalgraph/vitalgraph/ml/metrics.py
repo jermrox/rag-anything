@@ -60,6 +60,13 @@ MIN_SKILL_MARGIN = 0.05
 #: sees "beats the majority baseline" will conclude the thing works.
 IMPLAUSIBLE_ACCURACY = 0.90
 
+#: The same ceiling for two-class sleep/wake, which is a genuinely easier task.
+#: Published wrist sleep/wake against polysomnography reaches the high eighties,
+#: so applying the four-class ceiling here would flag a legitimate result as a
+#: leak. A ceiling is only meaningful against the task it was calibrated for,
+#: which is why it is a parameter rather than a constant.
+IMPLAUSIBLE_SLEEP_WAKE_ACCURACY = 0.95
+
 
 def majority_baseline_accuracy(
     train_labels: Sequence[float], test_labels: Sequence[float]
@@ -143,6 +150,11 @@ class SkillAssessment:
     baseline_accuracy: float
     kappa: float
     balanced_accuracy: float
+    implausible_above: float = IMPLAUSIBLE_ACCURACY
+    """The ceiling for the task being scored. Four-class staging and
+    two-class sleep/wake have different published ranges, so a single constant
+    would either excuse a leak on the harder task or condemn a real result on
+    the easier one."""
 
     @property
     def margin_over_baseline(self) -> float:
@@ -151,7 +163,7 @@ class SkillAssessment:
     @property
     def is_implausible(self) -> bool:
         """Whether the result is too good to have come from real staging."""
-        return self.accuracy >= IMPLAUSIBLE_ACCURACY
+        return self.accuracy >= self.implausible_above
 
     @property
     def has_skill(self) -> bool:
@@ -175,8 +187,9 @@ class SkillAssessment:
             return (
                 f"IMPLAUSIBLE: {self.accuracy:.1%} accuracy, kappa "
                 f"{self.kappa:.2f}, against a {self.baseline_accuracy:.1%} "
-                f"majority-class baseline. Published four-class staging from "
-                f"these signals reaches roughly 70-80%, so a result this high "
+                f"majority-class baseline, above the {self.implausible_above:.0%} "
+                f"ceiling for this task. Published agreement from these signals "
+                f"sits well below it, so a result this high "
                 f"means the labels were recoverable from the features by "
                 f"construction -- synthetic data, a leaky split, or a feature "
                 f"encoding the label. Beating the baseline this far is the "
@@ -214,6 +227,7 @@ def assess_skill(
     predicted: Sequence[float],
     actual: Sequence[float],
     train_labels: Sequence[float],
+    implausible_above: float = IMPLAUSIBLE_ACCURACY,
 ) -> SkillAssessment:
     """Score a set of predictions against the baseline that makes them meaningful."""
     n = len(actual)
@@ -223,6 +237,7 @@ def assess_skill(
         baseline_accuracy=majority_baseline_accuracy(train_labels, actual),
         kappa=cohens_kappa(predicted, actual),
         balanced_accuracy=balanced_accuracy(predicted, actual),
+        implausible_above=implausible_above,
     )
 
 

@@ -23,12 +23,17 @@ honest evaluation, and this module refuses to evaluate any other way.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Dict, List, Sequence, Tuple
 
 from ..biometrics.schema import SleepStage
 from .epochs import EPOCH_FEATURE_NAMES, EpochSample, labelled_only
-from .metrics import CrossValidationSummary, SkillAssessment, assess_skill
+from .metrics import (
+    IMPLAUSIBLE_ACCURACY,
+    CrossValidationSummary,
+    SkillAssessment,
+    assess_skill,
+)
 from .registry import SYNTHETIC, ModelCard, require_sklearn
 
 STAGE_NAMES = {
@@ -42,17 +47,13 @@ STAGE_NAMES = {
 #: fitting one person's one night and cannot generalise even in principle.
 MIN_TRAINING_NIGHTS = 3
 
-#: Four-class sleep staging from RR intervals alone reaches roughly 70-80%
-#: agreement with polysomnography in the published literature. Beating that by
-#: a wide margin does not mean the model is exceptional; it means the labels
-#: were derivable from the features by construction. Against this simulator
-#: that is exactly what happens -- the stage track is a deterministic function
-#: of elapsed time, so a model given elapsed time recovers it perfectly.
-#:
-#: Accuracy at or above this threshold is therefore reported as *implausible*
-#: rather than excellent, because in practice it means one of: training on
-#: synthetic data, a leaky split, or a feature that encodes the label.
-IMPLAUSIBLE_ACCURACY = 0.90
+#: The implausibility ceiling is imported from :mod:`vitalgraph.ml.metrics`
+#: rather than defined here. It was defined in both, which is how two copies of
+#: one threshold drift apart -- and it became a parameter once sleep/wake
+#: needed a different value, so a second copy would have silently kept the old
+#: one. Four-class staging from RR intervals reaches roughly 70-80% agreement
+#: with polysomnography; a result far above that means the labels were
+#: derivable from the features by construction, not that the model is good.
 
 #: Published range for RR-only four-class staging, for context in reports.
 PLAUSIBLE_ACCURACY_RANGE = (0.70, 0.80)
@@ -281,10 +282,38 @@ class SleepStager:
         )
 
 
+#: Sleep and wake, the two-class reduction.
+SLEEP_WAKE_NAMES = {0.0: "wake", 1.0: "sleep"}
+
+
+def collapse_to_sleep_wake(samples: Sequence[EpochSample]) -> List[EpochSample]:
+    """Relabel epochs as wake (0) or asleep (1), leaving features untouched.
+
+    Four-class staging from RR intervals alone is a hard problem and our
+    features do not solve it. Sleep/wake is a genuinely easier question and the
+    one the wrist-staging literature reports usable numbers for, so asking it
+    separately says whether the failure is the task or the feature set --
+    which is worth knowing before adding features.
+
+    This is a narrower claim, not a repaired model. A sleep/wake classifier
+    cannot report time in deep sleep or REM, and must never be presented as
+    though it could.
+    """
+    out: List[EpochSample] = []
+    for sample in samples:
+        if sample.label is None:
+            out.append(sample)
+            continue
+        asleep = 0.0 if sample.label == SleepStage.AWAKE.value else 1.0
+        out.append(replace(sample, label=asleep))
+    return out
+
+
 def leave_one_night_out(
     samples: Sequence[EpochSample],
     seed: int = 0,
     n_estimators: int = 200,
+    implausible_above: float = IMPLAUSIBLE_ACCURACY,
 ) -> CrossValidationSummary:
     """Score every night by training on all the others.
 
@@ -318,7 +347,15 @@ def leave_one_night_out(
         predicted = stager.predict(test)
         actual = [s.label for s in test]
         results.append(
-            (held_out, assess_skill(predicted, actual, stager._train_labels))
+            (
+                held_out,
+                assess_skill(
+                    predicted,
+                    actual,
+                    stager._train_labels,
+                    implausible_above=implausible_above,
+                ),
+            )
         )
 
     return CrossValidationSummary(per_subject=tuple(results))
