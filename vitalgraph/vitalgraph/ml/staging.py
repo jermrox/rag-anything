@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from ..biometrics.schema import SleepStage
 from .epochs import EPOCH_FEATURE_NAMES, EpochSample, labelled_only
+from .metrics import CrossValidationSummary, SkillAssessment, assess_skill
 from .registry import SYNTHETIC, ModelCard, require_sklearn
 
 STAGE_NAMES = {
@@ -70,6 +71,13 @@ class StagingEvaluation:
     n_test_epochs: int
     test_nights: Tuple[str, ...]
     caveat: str
+    skill: SkillAssessment | None = None
+    """Accuracy against the majority-class baseline, with kappa.
+
+    Optional only so an evaluation can still be constructed without training
+    labels to hand; every evaluation produced by :meth:`SleepStager.evaluate`
+    carries one. A high accuracy with no skill is the failure this exists to
+    surface, and it is invisible in the accuracy alone."""
 
     @property
     def is_implausible(self) -> bool:
@@ -105,6 +113,7 @@ class StagingEvaluation:
             "caveat": self.caveat,
             "is_implausible": self.is_implausible,
             "plausibility": self.plausibility_note(),
+            "skill": self.skill.as_dict() if self.skill else None,
         }
 
 
@@ -150,6 +159,11 @@ class SleepStager:
         self.n_estimators = n_estimators
         self._model: Any = None
         self._nights: Tuple[str, ...] = ()
+        self._train_labels: Tuple[float, ...] = ()
+        """Training label distribution, kept so the majority-class baseline
+        can be computed from training data rather than from the test set.
+        Taking the majority class from test would let the baseline see the
+        answers and make it unbeatable, inverting the comparison."""
 
     @property
     def is_fitted(self) -> bool:
@@ -181,6 +195,7 @@ class SleepStager:
             min_samples_leaf=3,
         ).fit(x, y)
         self._nights = tuple(nights)
+        self._train_labels = tuple(float(s.label) for s in labelled)
 
         return ModelCard(
             name="sleep-stager",
@@ -262,7 +277,51 @@ class SleepStager:
             n_test_epochs=len(labelled),
             test_nights=tuple(test_nights),
             caveat=caveat,
+            skill=assess_skill(predicted, actual, self._train_labels),
         )
+
+
+def leave_one_night_out(
+    samples: Sequence[EpochSample],
+    seed: int = 0,
+    n_estimators: int = 200,
+) -> CrossValidationSummary:
+    """Score every night by training on all the others.
+
+    A single held-out night gives one number with no sense of whether it was
+    lucky. Rotating the held-out night uses all the data and produces a
+    distribution, which is the only way to see that a model works for most
+    people and fails completely for some -- the case a mean conceals and the
+    one a health product is actually judged on.
+
+    This mirrors the leave-one-subject-out design used in the wrist-staging
+    literature with the same sensor set. Nights that cannot be trained around,
+    because removing them leaves too few, are skipped rather than scored on a
+    model that could not be fitted.
+    """
+    labelled = labelled_only(samples)
+    nights = sorted({s.night_id for s in labelled})
+    if len(nights) <= MIN_TRAINING_NIGHTS:
+        raise NotEnoughNights(
+            f"leave-one-night-out needs more than {MIN_TRAINING_NIGHTS} nights "
+            f"so each fold still has enough to train on, got {len(nights)}"
+        )
+
+    results: List[Tuple[str, SkillAssessment]] = []
+    for held_out in nights:
+        train = [s for s in labelled if s.night_id != held_out]
+        test = [s for s in labelled if s.night_id == held_out]
+        if not test:
+            continue
+        stager = SleepStager(seed=seed, n_estimators=n_estimators)
+        stager.fit(train)
+        predicted = stager.predict(test)
+        actual = [s.label for s in test]
+        results.append(
+            (held_out, assess_skill(predicted, actual, stager._train_labels))
+        )
+
+    return CrossValidationSummary(per_subject=tuple(results))
 
 
 def to_content_list(
