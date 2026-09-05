@@ -1,0 +1,634 @@
+<title>Vybe Live Monitor</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground: #eceff0;
+  --surface: #ffffff;
+  --sunken: #e2e7e8;
+  --ink: #14191b;
+  --ink-soft: #47555a;
+  --ink-dim: #6d7b80;
+  --rule: #cfd7d9;
+  --accent: #0d6e6b;
+  --accent-soft: #d5e8e7;
+  --live: #0d6e6b;
+  --demo: #8a5a10;
+  --demo-soft: #f6e9d2;
+  --crit: #9c3128;
+  --trace: #0d6e6b;
+  --shadow: 0 1px 3px rgba(20, 25, 27, .09);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #12181a;
+    --surface: #192023;
+    --sunken: #101618;
+    --ink: #e6ecee;
+    --ink-soft: #a9b8bc;
+    --ink-dim: #7d8d92;
+    --rule: #2c3639;
+    --accent: #4fbfb8;
+    --accent-soft: #1d3634;
+    --live: #4fbfb8;
+    --demo: #d9a441;
+    --demo-soft: #33291a;
+    --crit: #e0776b;
+    --trace: #4fbfb8;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #12181a;
+  --surface: #192023;
+  --sunken: #101618;
+  --ink: #e6ecee;
+  --ink-soft: #a9b8bc;
+  --ink-dim: #7d8d92;
+  --rule: #2c3639;
+  --accent: #4fbfb8;
+  --accent-soft: #1d3634;
+  --live: #4fbfb8;
+  --demo: #d9a441;
+  --demo-soft: #33291a;
+  --crit: #e0776b;
+  --trace: #4fbfb8;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 0 16px 64px;
+}
+.app { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
+h1, h2, h3 { font-family: Bitter, Georgia, serif; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.dim { color: var(--ink-dim); }
+
+/* --- top bar --- */
+.bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 18px 0 4px;
+}
+.brand { font-family: Bitter, Georgia, serif; font-size: 1.06rem; font-weight: 600; }
+.brand span { color: var(--ink-dim); font-weight: 500; }
+.state {
+  font-family: "IBM Plex Mono", monospace; font-size: .7rem; letter-spacing: .1em;
+  text-transform: uppercase; padding: 4px 9px; border-radius: 999px;
+  border: 1px solid var(--rule); color: var(--ink-dim); white-space: nowrap;
+}
+.state[data-mode="live"] { color: var(--live); border-color: currentColor; }
+.state[data-mode="demo"] { color: var(--demo); border-color: currentColor; background: var(--demo-soft); }
+
+/* --- demo banner --- */
+.demo-banner {
+  background: var(--demo-soft); border: 1px solid var(--demo); border-radius: 3px;
+  padding: 10px 14px; font-size: .87rem; color: var(--ink);
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.demo-banner b { color: var(--demo); }
+
+/* --- the pulse --- */
+.pulse-card {
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 22px 20px 16px; box-shadow: var(--shadow);
+  display: grid; gap: 14px; justify-items: center;
+}
+.heartline { display: flex; align-items: baseline; gap: 10px; }
+.bpm {
+  font-family: Bitter, Georgia, serif; font-size: 4.6rem; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: -.03em;
+}
+.bpm.waiting { font-size: 1.6rem; color: var(--ink-dim); letter-spacing: 0; }
+.bpm-unit { font-size: .82rem; color: var(--ink-dim); letter-spacing: .1em; text-transform: uppercase; }
+.ring {
+  width: 13px; height: 13px; border-radius: 50%; background: var(--trace);
+  transform: scale(.6); opacity: .35; align-self: center;
+}
+.ring.beat { animation: beat .42s ease-out; }
+@keyframes beat {
+  0% { transform: scale(.6); opacity: .35; }
+  18% { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(.6); opacity: .35; }
+}
+@media (prefers-reduced-motion: reduce) { .ring.beat { animation: none; opacity: .9; } }
+canvas { width: 100%; height: 96px; display: block; }
+.trace-note {
+  font-family: "IBM Plex Mono", monospace; font-size: .68rem; color: var(--ink-dim);
+  letter-spacing: .07em; text-transform: uppercase; justify-self: start;
+}
+
+/* --- controls --- */
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+button {
+  font: inherit; font-weight: 500; padding: 13px 16px; border-radius: 3px;
+  border: 1px solid var(--rule); background: var(--surface); color: var(--ink);
+  cursor: pointer; transition: background .12s ease, border-color .12s ease;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+:root:not([data-theme="light"]) button.primary { color: #0d1618; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary { color: #0d1618; } }
+:root[data-theme="dark"] button.primary { color: #0d1618; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.msg {
+  font-size: .87rem; color: var(--ink-soft); background: var(--sunken);
+  border-radius: 3px; padding: 11px 14px; border-left: 2px solid var(--rule);
+}
+.msg.error { border-left-color: var(--crit); }
+
+/* --- readings --- */
+.readings { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.reading {
+  background: var(--surface); padding: 13px 16px;
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; align-items: baseline;
+}
+.reading .name { font-weight: 500; }
+.reading .value {
+  font-family: "IBM Plex Mono", monospace; font-size: 1.06rem;
+  font-variant-numeric: tabular-nums; grid-row: span 2; align-self: center;
+}
+.reading .value.absent { font-size: .82rem; color: var(--ink-dim); text-align: right; max-width: 15ch; }
+.reading .sub { font-size: .8rem; color: var(--ink-dim); grid-column: 1; }
+.tier {
+  font-family: "IBM Plex Mono", monospace; font-size: .63rem; letter-spacing: .1em;
+  text-transform: uppercase; padding: 2px 6px; border-radius: 2px; margin-right: 7px;
+  background: var(--accent-soft); color: var(--accent); white-space: nowrap;
+}
+.tier.derived { background: var(--sunken); color: var(--ink-soft); }
+.tier.none { background: transparent; color: var(--ink-dim); border: 1px solid var(--rule); }
+
+/* --- sections --- */
+section { display: grid; gap: 10px; }
+.section-label {
+  font-family: "IBM Plex Mono", monospace; font-size: .68rem; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--ink-dim);
+}
+h2 { font-size: 1.08rem; font-weight: 600; }
+.lede { font-size: .92rem; color: var(--ink-soft); }
+
+/* --- refusals --- */
+.refusals { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.refusal { background: var(--surface); padding: 13px 16px; display: grid; gap: 3px; }
+.refusal .what { font-weight: 500; }
+.refusal .why { font-size: .86rem; color: var(--ink-soft); }
+.struck { text-decoration: line-through; text-decoration-color: var(--crit); text-decoration-thickness: 1.5px; }
+
+/* --- factors --- */
+.factors { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.fchip {
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 3px;
+  padding: 11px 12px; display: grid; gap: 3px;
+}
+.fchip.lit { border-color: var(--accent); }
+.fchip .fname { font-size: .87rem; font-weight: 500; }
+.fchip .fstate { font-family: "IBM Plex Mono", monospace; font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+.fchip.lit .fstate { color: var(--accent); }
+
+footer { font-size: .8rem; color: var(--ink-dim); border-top: 1px solid var(--rule); padding-top: 14px; }
+footer a { color: var(--accent); }
+</style>
+
+<div class="app">
+  <div class="bar">
+    <div class="brand">Vybe <span>&#183; live monitor</span></div>
+    <div class="state" id="state" data-mode="idle">Not connected</div>
+  </div>
+
+  <div class="demo-banner" id="demoBanner" hidden>
+    <span>&#9888;</span>
+    <div><b>Demo data.</b> This heartbeat is generated, not yours. Nothing on this
+    screen is a measurement of a person until you connect a device.</div>
+  </div>
+
+  <div class="pulse-card">
+    <div class="heartline">
+      <div class="ring" id="ring"></div>
+      <div class="bpm waiting" id="bpm">&#8212;</div>
+      <div class="bpm-unit" id="bpmUnit" hidden>bpm</div>
+    </div>
+    <canvas id="trace" aria-label="Recent beat-to-beat intervals"></canvas>
+    <div class="trace-note" id="traceNote">Beat-to-beat interval &#183; last 90 beats</div>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="connect">Connect a device</button>
+    <button id="demo">Run demo</button>
+  </div>
+  <div class="msg" id="msg">Works with any Bluetooth chest strap or watch that broadcasts
+  heart rate &#8212; Polar, Garmin, Wahoo, Coospo and most cheap bands. Needs Chrome or Edge.</div>
+
+  <section>
+    <div class="section-label">Readings</div>
+    <div class="readings" id="readings"></div>
+  </section>
+
+  <section>
+    <div class="section-label">Deliberately absent</div>
+    <h2>What this will not tell you</h2>
+    <p class="lede">Every other app puts a number here. We know what those numbers are
+    worth, so we are not going to show you one.</p>
+    <div class="refusals">
+      <div class="refusal">
+        <div class="what"><span class="struck">Recovery score: 72</span></div>
+        <div class="why">There is no such measurement. It is a weighted guess presented as
+        a fact, and the weights are chosen to feel plausible, not to be true.</div>
+      </div>
+      <div class="refusal">
+        <div class="what"><span class="struck">Stress: elevated</span></div>
+        <div class="why">HRV moves with training, alcohol, illness, caffeine and simply
+        standing up, as readily as with stress. One reading cannot separate them.</div>
+      </div>
+      <div class="refusal">
+        <div class="what"><span class="struck">Sleep stage: deep</span></div>
+        <div class="why">Ours is 50&#8202;% accurate on real scored nights &#8212; barely
+        better than a coin flip, and worse than guessing on 10 of 16 people we tested.
+        Until motion data fixes that, you get no stage.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">Coverage</div>
+    <h2>What one heart rate sensor actually reaches</h2>
+    <p class="lede">Health has five parts. This connection lights up two and a half of
+    them. The dark ones are not coming soon &#8212; they are answered by asking you.</p>
+    <div class="factors" id="factors"></div>
+  </section>
+
+  <footer>
+    Beat intervals are read from Bluetooth characteristic <span class="mono">0x2A37</span>
+    at 1/1024&#8202;s resolution and never leave this page. Nothing is uploaded, stored or
+    sent anywhere.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* --------------------------------------------------------------------------
+   The rule this whole screen is built around: a number appears only when it
+   has been measured or computed from measurements. Anything short of that
+   states what is missing instead. Every "collecting" line below is a place a
+   normal health app would have shown you a confident value.
+   -------------------------------------------------------------------------- */
+
+var HR_SERVICE = 0x180d;
+var HR_CHARACTERISTIC = 0x2a37;
+
+/* Minimum interval counts. RMSSD is a difference statistic and steadies fast;
+   SDNN describes spread and needs a longer look. Below these it is noise. */
+var MIN_RR_FOR_RMSSD = 30;
+var MIN_RR_FOR_SDNN = 60;
+var TRACE_BEATS = 90;
+
+var state = {
+  mode: "idle",          /* idle | live | demo */
+  bpm: null,
+  rr: [],                /* beat-to-beat intervals, ms, most recent last */
+  totalBeats: 0,
+  device: null,
+  characteristic: null,
+  demoTimer: null,
+  demoPhase: 0
+};
+
+var el = {
+  state: document.getElementById("state"),
+  banner: document.getElementById("demoBanner"),
+  bpm: document.getElementById("bpm"),
+  bpmUnit: document.getElementById("bpmUnit"),
+  ring: document.getElementById("ring"),
+  msg: document.getElementById("msg"),
+  connect: document.getElementById("connect"),
+  demo: document.getElementById("demo"),
+  readings: document.getElementById("readings"),
+  factors: document.getElementById("factors"),
+  canvas: document.getElementById("trace"),
+  traceNote: document.getElementById("traceNote")
+};
+
+/* --- decoding 0x2A37 ------------------------------------------------------
+   Flags byte first. Bit 0 sets the heart rate width, bit 3 says an energy
+   field is present, bit 4 says beat-to-beat intervals follow. The intervals
+   are the valuable part and the reason this app exists: they are what HRV is
+   computed from, and most vendor apps throw them away.
+   ------------------------------------------------------------------------ */
+function decodeHeartRate(view) {
+  var flags = view.getUint8(0);
+  var wide = (flags & 0x01) !== 0;
+  var hasEnergy = (flags & 0x08) !== 0;
+  var hasIntervals = (flags & 0x10) !== 0;
+
+  var offset = 1;
+  var bpm;
+  if (wide) { bpm = view.getUint16(offset, true); offset += 2; }
+  else { bpm = view.getUint8(offset); offset += 1; }
+  if (hasEnergy) { offset += 2; }
+
+  var intervals = [];
+  if (hasIntervals) {
+    while (offset + 1 < view.byteLength) {
+      /* Units of 1/1024 s, not milliseconds. Getting this wrong inflates every
+         interval by about 2.4% and quietly corrupts every HRV figure. */
+      intervals.push(view.getUint16(offset, true) * 1000 / 1024);
+      offset += 2;
+    }
+  }
+  return { bpm: bpm, intervals: intervals };
+}
+
+/* --- statistics ---------------------------------------------------------- */
+function rmssd(rr) {
+  if (rr.length < 2) return null;
+  var sum = 0;
+  for (var i = 1; i < rr.length; i++) {
+    var d = rr[i] - rr[i - 1];
+    sum += d * d;
+  }
+  return Math.sqrt(sum / (rr.length - 1));
+}
+
+function sdnn(rr) {
+  if (rr.length < 2) return null;
+  var mean = rr.reduce(function (a, b) { return a + b; }, 0) / rr.length;
+  var v = rr.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0);
+  return Math.sqrt(v / (rr.length - 1));
+}
+
+/* --- rendering the readings ---------------------------------------------- */
+function reading(name, sub, tier, tierClass, value, absent) {
+  var d = document.createElement("div");
+  d.className = "reading";
+  var n = document.createElement("div");
+  n.className = "name";
+  n.textContent = name;
+  var v = document.createElement("div");
+  v.className = "value" + (absent ? " absent" : "");
+  v.textContent = value;
+  var s = document.createElement("div");
+  s.className = "sub";
+  var t = document.createElement("span");
+  t.className = "tier " + tierClass;
+  t.textContent = tier;
+  s.appendChild(t);
+  s.appendChild(document.createTextNode(sub));
+  d.appendChild(n); d.appendChild(v); d.appendChild(s);
+  return d;
+}
+
+function renderReadings() {
+  var rr = state.rr;
+  var box = document.createDocumentFragment();
+
+  box.appendChild(state.bpm === null
+    ? reading("Heart rate", "Reported by the device itself", "Measured", "none",
+              "waiting for a beat", true)
+    : reading("Heart rate", "Reported by the device itself", "Measured", "",
+              state.bpm + " bpm", false));
+
+  var last = rr.length ? rr[rr.length - 1] : null;
+  box.appendChild(last === null
+    ? reading("Last beat interval", "Time from the previous heartbeat to this one",
+              "Measured", "none", "no intervals yet", true)
+    : reading("Last beat interval", "Time from the previous heartbeat to this one",
+              "Measured", "", Math.round(last) + " ms", false));
+
+  var r = rr.length >= MIN_RR_FOR_RMSSD ? rmssd(rr.slice(-120)) : null;
+  box.appendChild(r === null
+    ? reading("HRV (RMSSD)", "Beat-to-beat variability", "Not yet", "none",
+              "collecting — " + rr.length + " of " + MIN_RR_FOR_RMSSD + " beats", true)
+    : reading("HRV (RMSSD)", "Computed from the intervals above, nothing else",
+              "Derived", "derived", r.toFixed(1) + " ms", false));
+
+  var s = rr.length >= MIN_RR_FOR_SDNN ? sdnn(rr.slice(-300)) : null;
+  box.appendChild(s === null
+    ? reading("HRV (SDNN)", "Spread of the intervals", "Not yet", "none",
+              "collecting — " + rr.length + " of " + MIN_RR_FOR_SDNN + " beats", true)
+    : reading("HRV (SDNN)", "Computed from the intervals above, nothing else",
+              "Derived", "derived", s.toFixed(1) + " ms", false));
+
+  box.appendChild(reading("Beats seen", "Since this session started", "Derived", "derived",
+                          String(state.totalBeats), false));
+
+  el.readings.innerHTML = "";
+  el.readings.appendChild(box);
+}
+
+/* --- factor coverage ----------------------------------------------------- */
+var FACTORS = [
+  { name: "Sleep", lit: true, on: "partly", off: "needs motion" },
+  { name: "Movement", lit: true, on: "partly", off: "needs motion" },
+  { name: "Mind", lit: true, on: "weak proxy", off: "weak proxy" },
+  { name: "Nutrition", lit: false, on: "", off: "ask, or scale" },
+  { name: "Connection", lit: false, on: "", off: "only by asking" }
+];
+
+function renderFactors() {
+  var connected = state.mode !== "idle";
+  el.factors.innerHTML = "";
+  FACTORS.forEach(function (f) {
+    var d = document.createElement("div");
+    d.className = "fchip" + (f.lit && connected ? " lit" : "");
+    var n = document.createElement("div");
+    n.className = "fname";
+    n.textContent = f.name;
+    var s = document.createElement("div");
+    s.className = "fstate";
+    s.textContent = !f.lit ? f.off : (connected ? f.on : "no sensor");
+    d.appendChild(n); d.appendChild(s);
+    el.factors.appendChild(d);
+  });
+}
+
+/* --- the trace ----------------------------------------------------------- */
+function drawTrace() {
+  var c = el.canvas;
+  var dpr = window.devicePixelRatio || 1;
+  var w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) return;
+  c.width = Math.round(w * dpr);
+  c.height = Math.round(h * dpr);
+  var ctx = c.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  var css = getComputedStyle(document.documentElement);
+  var stroke = css.getPropertyValue("--trace").trim() || "#0d6e6b";
+  var rule = css.getPropertyValue("--rule").trim() || "#cfd7d9";
+
+  /* Midline, so a flat trace still reads as a trace rather than an empty box. */
+  ctx.strokeStyle = rule;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h - 0.5);
+  ctx.lineTo(w, h - 0.5);
+  ctx.stroke();
+
+  var rr = state.rr.slice(-TRACE_BEATS);
+  if (rr.length < 2) return;
+
+  /* Scale to the window shown, with a floor on the range so a very steady
+     heart does not get its noise magnified into drama. */
+  var lo = Math.min.apply(null, rr), hi = Math.max.apply(null, rr);
+  var mid = (lo + hi) / 2, half = Math.max((hi - lo) / 2, 40);
+  lo = mid - half; hi = mid + half;
+
+  var pad = 10;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1.6;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  for (var i = 0; i < rr.length; i++) {
+    var x = (i / (TRACE_BEATS - 1)) * w;
+    var y = pad + (1 - (rr[i] - lo) / (hi - lo)) * (h - pad * 2);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  /* Emphasise the newest beat: it is the one the number above refers to. */
+  var lx = ((rr.length - 1) / (TRACE_BEATS - 1)) * w;
+  var ly = pad + (1 - (rr[rr.length - 1] - lo) / (hi - lo)) * (h - pad * 2);
+  ctx.fillStyle = stroke;
+  ctx.beginPath();
+  ctx.arc(lx, ly, 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/* --- incoming beats ------------------------------------------------------ */
+function onBeat(bpm, intervals) {
+  state.bpm = bpm;
+  if (intervals.length) {
+    for (var i = 0; i < intervals.length; i++) {
+      /* Implausible intervals are dropped, not smoothed. A dropped beat or a
+         movement artifact produces an interval no heart can make, and letting
+         it into the series would swing RMSSD wildly. */
+      if (intervals[i] >= 300 && intervals[i] <= 2000) state.rr.push(intervals[i]);
+    }
+    if (state.rr.length > 600) state.rr = state.rr.slice(-600);
+  }
+  state.totalBeats += Math.max(1, intervals.length);
+
+  el.bpm.textContent = String(bpm);
+  el.bpm.classList.remove("waiting");
+  el.bpmUnit.hidden = false;
+  el.ring.classList.remove("beat");
+  void el.ring.offsetWidth;
+  el.ring.classList.add("beat");
+
+  renderReadings();
+  drawTrace();
+}
+
+/* --- live device --------------------------------------------------------- */
+function setMode(mode, label) {
+  state.mode = mode;
+  el.state.dataset.mode = mode;
+  el.state.textContent = label;
+  el.banner.hidden = mode !== "demo";
+  el.traceNote.textContent = (mode === "demo" ? "Demo trace" : "Beat-to-beat interval") +
+    " · last " + TRACE_BEATS + " beats";
+  renderFactors();
+}
+
+function say(text, isError) {
+  el.msg.textContent = text;
+  el.msg.className = "msg" + (isError ? " error" : "");
+}
+
+function stopDemo() {
+  if (state.demoTimer) { clearTimeout(state.demoTimer); state.demoTimer = null; }
+}
+
+el.connect.addEventListener("click", function () {
+  if (!navigator.bluetooth) {
+    say("This browser has no Bluetooth support. Chrome or Edge on Android, macOS, " +
+        "Windows or Linux will work; Safari and iOS will not. Tap Run demo to see " +
+        "what the screen does meanwhile.", true);
+    return;
+  }
+  stopDemo();
+  state.rr = []; state.totalBeats = 0; state.bpm = null;
+  say("Pick your device in the browser prompt…", false);
+
+  navigator.bluetooth.requestDevice({ filters: [{ services: [HR_SERVICE] }] })
+    .then(function (device) {
+      state.device = device;
+      device.addEventListener("gattserverdisconnected", function () {
+        setMode("idle", "Disconnected");
+        say("The device disconnected. Tap Connect a device to pick it up again.", true);
+      });
+      return device.gatt.connect();
+    })
+    .then(function (server) { return server.getPrimaryService(HR_SERVICE); })
+    .then(function (service) { return service.getCharacteristic(HR_CHARACTERISTIC); })
+    .then(function (ch) {
+      state.characteristic = ch;
+      ch.addEventListener("characteristicvaluechanged", function (event) {
+        var decoded = decodeHeartRate(event.target.value);
+        onBeat(decoded.bpm, decoded.intervals);
+      });
+      return ch.startNotifications();
+    })
+    .then(function () {
+      setMode("live", "Live · " + (state.device.name || "device"));
+      say("Connected. If HRV stays on “collecting” for more than a minute, this " +
+          "device reports heart rate but not beat-to-beat intervals — the number " +
+          "HRV is built from. Many cheap bands hold them back.", false);
+    })
+    .catch(function (err) {
+      var name = err && err.name ? err.name : "";
+      if (name === "NotFoundError") {
+        say("No device chosen. Make sure the strap is worn and awake, then try again.", true);
+      } else if (name === "SecurityError" || name === "NotAllowedError") {
+        say("This page is not allowed to reach Bluetooth here — an embedded page " +
+            "usually is not. Open it in its own browser tab, or tap Run demo.", true);
+      } else {
+        say("Could not connect: " + (err && err.message ? err.message : name), true);
+      }
+    });
+});
+
+/* --- the demo -----------------------------------------------------------
+   A generated heartbeat with respiratory sinus arrhythmia: the interval
+   lengthens as you breathe out and shortens as you breathe in, which is what
+   HRV mostly is in a resting person. Labelled as fake everywhere it appears,
+   because a demo that looks like a measurement is the exact thing this
+   product exists to refuse.
+   ---------------------------------------------------------------------- */
+el.demo.addEventListener("click", function () {
+  stopDemo();
+  state.rr = []; state.totalBeats = 0; state.bpm = null; state.demoPhase = 0;
+  setMode("demo", "Demo · generated");
+  say("Generated heartbeat at rest, about 58 bpm, breathing roughly every 4 seconds. " +
+      "Watch HRV stay blank until enough beats have arrived — that refusal is the " +
+      "feature.", false);
+
+  var tick = function () {
+    state.demoPhase += 1;
+    var breath = Math.sin(state.demoPhase / 4.6) * 42;      /* respiratory swing, ms */
+    var drift = Math.sin(state.demoPhase / 90) * 25;         /* slow baseline drift */
+    /* Beat-to-beat noise dominates RMSSD, so it is sized to land the demo in the
+       30-40 ms range a healthy resting adult actually shows. A smooth sine alone
+       would produce an RMSSD near zero and quietly teach the wrong thing. */
+    var noise = (Math.random() - 0.5) * 85;
+    var interval = 1035 + breath + drift + noise;
+    onBeat(Math.round(60000 / interval), [interval]);
+    state.demoTimer = setTimeout(tick, interval);
+  };
+  tick();
+});
+
+window.addEventListener("resize", drawTrace);
+renderReadings();
+renderFactors();
+drawTrace();
+</script>
