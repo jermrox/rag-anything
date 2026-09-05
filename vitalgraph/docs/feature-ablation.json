@@ -16,6 +16,11 @@
         "mean_kappa": 0.28,
         "subjects_with_skill": 9,
         "worst_accuracy": 0.096
+      },
+      "with_context_and_frequency_48_features": {
+        "accuracy": 0.533,
+        "mean_kappa": 0.233,
+        "subjects_with_skill": 7
       }
     },
     "sleep_wake": {
@@ -30,8 +35,22 @@
         "mean_kappa": 0.287,
         "subjects_with_skill": 7,
         "worst_accuracy": 0.213
+      },
+      "with_context_and_frequency_48_features": {
+        "accuracy": 0.665,
+        "mean_kappa": 0.28,
+        "subjects_with_skill": 6
       }
     }
   },
-  "conclusion": "Temporal context improves both tasks by roughly +0.07 kappa, replicating across two different label sets, which is what makes it credible rather than a lucky split. It is not sufficient: 9 of 16 and 7 of 16 subjects show skill, and the worst subject is barely above chance. Offline only -- the centred window reads future epochs."
+  "conclusion": "Temporal context improves both tasks by roughly +0.07 kappa, replicating across two different label sets, which is what makes it credible rather than a lucky split. It is not sufficient: 9 of 16 and 7 of 16 subjects show skill, and the worst subject is barely above chance. Offline only -- the centred window reads future epochs.",
+  "negative_result": {
+    "change": "frequency-domain HRV (LF, HF, LF/HF, normalised HF) over a 5-minute centred window, added on top of temporal context",
+    "outcome": "worse on both tasks: four-class kappa +0.280 -> +0.233 and 9 -> 7 subjects with skill; sleep/wake +0.287 -> +0.280 and 7 -> 6. Not shipped: load_epochs(with_frequency=False) is the default.",
+    "candidate_explanations_untested": [
+      "48 features against 8622 samples gives more room to overfit than 36",
+      "windows that cannot support an estimate emit 0.0, making 'not estimable' indistinguishable from 'no power' to the model",
+      "epochs near the start and end of a record have truncated windows and so produce disproportionately many of those zeros"
+    ]
+  }
 }

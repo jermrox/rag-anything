@@ -22,6 +22,7 @@ from ..biometrics.store import BiometricStore
 from ..ml.epochs import EPOCH_SECONDS, EpochSample, epoch_samples
 from .ecg import BeatDetection, detect_beats
 from .physionet import SLPDB_RECORDS, PolysomnographyRecord, load_record
+from ..ml.frequency import windowed_band_powers
 
 #: Provenance marker distinguishing real records from simulated ones. The
 #: registry already separates synthetic from real training data; this is what
@@ -86,10 +87,32 @@ def record_to_epochs(
     return epochs, detection
 
 
+def add_frequency_features(
+    epochs: Sequence[EpochSample], detection: BeatDetection
+) -> List[EpochSample]:
+    """Append LF/HF band powers, computed from a window centred on each epoch.
+
+    Needs the raw RR series, which the epoch features have already reduced
+    away, so it takes the detection alongside the epochs rather than working
+    from the epochs alone.
+    """
+    from dataclasses import replace
+
+    if not epochs:
+        return []
+    starts = [e.index * EPOCH_SECONDS for e in epochs]
+    powers = windowed_band_powers(detection.rr_times_s, detection.rr_ms, starts)
+    return [
+        replace(epoch, values=tuple(epoch.values) + p.as_features())
+        for epoch, p in zip(epochs, powers)
+    ]
+
+
 def load_epochs(
     records: Sequence[str] = SLPDB_RECORDS,
     cache_dir=None,
     skip_implausible: bool = True,
+    with_frequency: bool = False,
     on_progress=None,
 ) -> Tuple[List[EpochSample], Dict[str, object]]:
     """Load several records into one labelled epoch set, with a report.
@@ -117,6 +140,8 @@ def load_epochs(
             continue
 
         epochs, detection = record_to_epochs(record)
+        if with_frequency:
+            epochs = add_frequency_features(epochs, detection)
         row = {
             "record": name,
             "hours": round(record.duration_hours, 2),
