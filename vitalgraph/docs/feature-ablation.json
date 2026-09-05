@@ -1,0 +1,37 @@
+{
+  "dataset": "physionet/slpdb",
+  "protocol": "leave-one-subject-out, 16 subjects, 8622 expert-scored epochs",
+  "change": "temporal context: 7.5 min centred triangular-weighted rolling average plus 2 min trailing average, per feature, within night",
+  "method_source": "yasa@dfddbd5:src/yasa/staging.py#L339-L347 (BSD-3-Clause)",
+  "results": {
+    "four_class": {
+      "baseline_12_features": {
+        "accuracy": 0.504,
+        "mean_kappa": 0.211,
+        "subjects_with_skill": 6,
+        "worst_accuracy": 0.092
+      },
+      "with_context_36_features": {
+        "accuracy": 0.557,
+        "mean_kappa": 0.28,
+        "subjects_with_skill": 9,
+        "worst_accuracy": 0.096
+      }
+    },
+    "sleep_wake": {
+      "baseline_12_features": {
+        "accuracy": 0.616,
+        "mean_kappa": 0.206,
+        "subjects_with_skill": 3,
+        "worst_accuracy": 0.209
+      },
+      "with_context_36_features": {
+        "accuracy": 0.668,
+        "mean_kappa": 0.287,
+        "subjects_with_skill": 7,
+        "worst_accuracy": 0.213
+      }
+    }
+  },
+  "conclusion": "Temporal context improves both tasks by roughly +0.07 kappa, replicating across two different label sets, which is what makes it credible rather than a lucky split. It is not sufficient: 9 of 16 and 7 of 16 subjects show skill, and the worst subject is barely above chance. Offline only -- the centred window reads future epochs."
+}
