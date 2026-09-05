@@ -21,6 +21,11 @@
         "accuracy": 0.533,
         "mean_kappa": 0.233,
         "subjects_with_skill": 7
+      },
+      "with_context_and_compact_frequency_39_features": {
+        "accuracy": 0.551,
+        "mean_kappa": 0.263,
+        "subjects_with_skill": 9
       }
     },
     "sleep_wake": {
@@ -40,6 +45,11 @@
         "accuracy": 0.665,
         "mean_kappa": 0.28,
         "subjects_with_skill": 6
+      },
+      "with_context_and_compact_frequency_39_features": {
+        "accuracy": 0.665,
+        "mean_kappa": 0.28,
+        "subjects_with_skill": 7
       }
     }
   },
@@ -51,6 +61,11 @@
       "48 features against 8622 samples gives more room to overfit than 36",
       "windows that cannot support an estimate emit 0.0, making 'not estimable' indistinguishable from 'no power' to the model",
       "epochs near the start and end of a record have truncated windows and so produce disproportionately many of those zeros"
-    ]
+    ],
+    "followup": {
+      "hypothesis": "the regression was feature count, not the features -- so keep only normalised_hf, which is bounded and comparable across subjects",
+      "outcome": "refuted. One feature performs the same as four and neither beats context alone. Frequency-domain HRV over 5-minute windows adds no signal beyond what the smoothed time-domain features already carry, on this dataset.",
+      "remaining": "The zero-fill and truncated-edge explanations are now also unlikely, since a single bounded feature would be far less affected by both and still did not help."
+    }
   }
 }

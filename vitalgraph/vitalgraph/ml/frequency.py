@@ -104,6 +104,17 @@ class BandPowers:
         total = self.lf + self.hf
         return self.hf / total if total > 0 else None
 
+    def as_compact_feature(self) -> Tuple[float]:
+        """Just normalised HF, the one bounded cross-subject-comparable value.
+
+        Raw LF and HF power vary by orders of magnitude between people, so a
+        model trained across subjects learns their scale rather than their
+        sleep. The ratio is unbounded and explodes as HF approaches zero. Only
+        the normalised fraction is on the same footing for everyone, which
+        makes it the one worth keeping if any of these are.
+        """
+        return (self.normalised_hf or 0.0,)
+
     def as_features(self) -> Tuple[float, float, float, float]:
         """Feature vector, with absent estimates rendered as zero.
 

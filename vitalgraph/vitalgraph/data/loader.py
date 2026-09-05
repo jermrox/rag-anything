@@ -88,7 +88,7 @@ def record_to_epochs(
 
 
 def add_frequency_features(
-    epochs: Sequence[EpochSample], detection: BeatDetection
+    epochs: Sequence[EpochSample], detection: BeatDetection, compact: bool = False
 ) -> List[EpochSample]:
     """Append LF/HF band powers, computed from a window centred on each epoch.
 
@@ -103,7 +103,11 @@ def add_frequency_features(
     starts = [e.index * EPOCH_SECONDS for e in epochs]
     powers = windowed_band_powers(detection.rr_times_s, detection.rr_ms, starts)
     return [
-        replace(epoch, values=tuple(epoch.values) + p.as_features())
+        replace(
+            epoch,
+            values=tuple(epoch.values)
+            + (p.as_compact_feature() if compact else p.as_features()),
+        )
         for epoch, p in zip(epochs, powers)
     ]
 
@@ -113,6 +117,7 @@ def load_epochs(
     cache_dir=None,
     skip_implausible: bool = True,
     with_frequency: bool = False,
+    compact_frequency: bool = False,
     on_progress=None,
 ) -> Tuple[List[EpochSample], Dict[str, object]]:
     """Load several records into one labelled epoch set, with a report.
@@ -141,7 +146,9 @@ def load_epochs(
 
         epochs, detection = record_to_epochs(record)
         if with_frequency:
-            epochs = add_frequency_features(epochs, detection)
+            epochs = add_frequency_features(
+                epochs, detection, compact=compact_frequency
+            )
         row = {
             "record": name,
             "hours": round(record.duration_hours, 2),
