@@ -37,6 +37,24 @@ class Category(str, Enum):
     HEALTH_INTEROP = "health_interop"
     """Clinical data interchange -- FHIR, LOINC, waveform formats."""
 
+    MEDICAL_DEVICE = "medical_device"
+    """Code that talks to a regulated or clinical-grade body-worn device.
+
+    Separate from WEARABLE_PROTOCOL because the engineering is different in
+    kind, not degree. A consumer band that drops a packet shows a wrong step
+    count; a CGM that drops one can hide a hypo. So this code carries things
+    the consumer stacks do not: calibration state machines, backfill of
+    missed readings, sensor-session lifecycle, staleness rules that refuse to
+    display an old value, and explicit handling of a sensor that has failed
+    rather than merely gone quiet.
+
+    That last set is the reason this category exists for us. Our own signal
+    model already refuses to invent values, and these are the codebases where
+    that discipline has been tested against a device people's health depends
+    on. They are also the clearest published examples of vendor BLE protocols
+    recovered by reverse-engineering, which is the same problem as reading an
+    undocumented band."""
+
     SLEEP_STAGING = "sleep_staging"
     """Turning signals into sleep stages, and evaluating the result honestly.
 
@@ -239,6 +257,110 @@ TARGETS: List[Target] = [
             "biometrics have to land to be interoperable."
         ),
         expected_spdx="Apache-2.0",
+    ),
+    # -- medical and clinical-grade devices -----------------------------
+    Target(
+        name="polar-ble-sdk",
+        url="https://github.com/polarofficial/polar-ble-sdk.git",
+        category=Category.MEDICAL_DEVICE,
+        rationale=(
+            "The vendor's own SDK for the H10, the chest strap research "
+            "studies use as ground truth for RR intervals. Documents how a "
+            "manufacturer exposes raw ECG, accelerometry and per-beat "
+            "intervals through custom characteristics alongside the standard "
+            "0x2A37 -- the difference between a band that gives you a number "
+            "and one that gives you the signal."
+        ),
+        expected_spdx=None,
+    ),
+    Target(
+        name="bleakheart",
+        url="https://github.com/fsmeraldi/bleakheart.git",
+        category=Category.MEDICAL_DEVICE,
+        rationale=(
+            "Reads Polar ECG and accelerometer streams from Python without "
+            "the vendor SDK. The independent reimplementation is worth more "
+            "than the SDK for our purposes: it shows which parts of the "
+            "protocol are actually necessary, and it is built on bleak, "
+            "which we already read."
+        ),
+        expected_spdx="MIT",
+    ),
+    Target(
+        name="movesense-ble-ecg-firmware",
+        url="https://github.com/JonasPrimbs/movesense-ble-ecg-firmware.git",
+        category=Category.MEDICAL_DEVICE,
+        rationale=(
+            "Firmware, not a client. The other side of the connection: how a "
+            "medical-grade sensor defines a custom GATT service, packs ECG "
+            "voltages, and manages notification rate against battery. The "
+            "only target that answers what a device could expose if we were "
+            "designing one."
+        ),
+    ),
+    Target(
+        name="xdrip",
+        url="https://github.com/NightscoutFoundation/xDrip.git",
+        category=Category.MEDICAL_DEVICE,
+        rationale=(
+            "A decade of reverse-engineered CGM transmitter protocols in one "
+            "Android codebase -- Dexcom, Libre, and more -- with the "
+            "calibration, backfill and sensor-session logic around them. The "
+            "single richest public example of talking to an undocumented "
+            "medical device over BLE and refusing to display a reading it "
+            "cannot stand behind."
+        ),
+        expected_spdx="GPL-3.0",
+        heavy=True,
+    ),
+    Target(
+        name="cgm-remote-monitor",
+        url="https://github.com/nightscout/cgm-remote-monitor.git",
+        category=Category.MEDICAL_DEVICE,
+        rationale=(
+            "What happens to device data after it leaves the device: "
+            "staleness rules, alarm escalation, and a display that says the "
+            "data is old rather than showing the last value as if current. "
+            "That is the same problem as our evidence tiers, solved in "
+            "production for people who act on it."
+        ),
+        expected_spdx="AGPL-3.0",
+    ),
+    Target(
+        name="oref0",
+        url="https://github.com/openaps/oref0.git",
+        category=Category.MEDICAL_DEVICE,
+        rationale=(
+            "A closed-loop dosing algorithm that has to be safe when its "
+            "inputs are missing, stale or wrong. Read for its refusal "
+            "logic rather than its dosing: the conditions under which it "
+            "declines to act are the most rigorously argued 'we do not know "
+            "enough' code in open-source health software."
+        ),
+        expected_spdx="MIT",
+    ),
+    Target(
+        name="EmotiBit_FeatherWing",
+        url="https://github.com/EmotiBit/EmotiBit_FeatherWing.git",
+        category=Category.MEDICAL_DEVICE,
+        rationale=(
+            "Open hardware and firmware streaming multi-wavelength PPG, "
+            "nine-axis motion, skin temperature and EDA. Multi-wavelength "
+            "PPG is what separates a research sensor from a consumer band, "
+            "and this is the readable implementation of it."
+        ),
+        expected_spdx="See-License-File",
+    ),
+    Target(
+        name="open-wearables",
+        url="https://github.com/the-momentum/open-wearables.git",
+        category=Category.MEDICAL_DEVICE,
+        rationale=(
+            "Normalises several vendors' health APIs behind one schema. The "
+            "value is the mapping itself: where two manufacturers disagree "
+            "about what a field means, this is where that disagreement has "
+            "already been written down."
+        ),
     ),
 ]
 
