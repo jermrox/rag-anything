@@ -1103,6 +1103,45 @@ PARSE_METHOD=auto              # Parse method: auto, ocr, or txt
 
 - See **[docs/multimodal_rag_failure_modes.md](docs/multimodal_rag_failure_modes.md)** for a short checklist of common pipeline issues (OCR, tables, retrieval bias, debugging tips). Related: [#207](https://github.com/HKUDS/RAG-Anything/issues/207), [#213](https://github.com/HKUDS/RAG-Anything/issues/213).
 
+### Biosignal ingestion (BLE fitness and health devices)
+
+`raganything.biosignal` ingests live physiology -- raw Bluetooth GATT streams,
+vendor cloud payloads, and phone health stores -- into the knowledge graph with
+provenance and uncertainty attached to every value, so sessions can be queried
+alongside plans, lab results and literature.
+
+```python
+from raganything.biosignal.ble import codecs, uuids
+from raganything.biosignal.index import index_session
+
+decoded = codecs.decode(uuids.CHR_HEART_RATE_MEASUREMENT, payload, timestamp)
+report = await index_session(rag, session, rest_hr=48, max_hr=186)
+```
+
+Sessions are also persisted to a report store, which a query layer computes over
+directly -- so questions that need arithmetic get arithmetic, not similarity
+search, and every answer is checked against what the data supports before it is
+returned:
+
+```python
+from raganything.biosignal import BiosignalQueryEngine
+
+engine = BiosignalQueryEngine(store=store)          # no LLM, no network
+print(engine.compute("is my RMSSD trending down over the last six weeks?").answer)
+
+engine = BiosignalQueryEngine(rag=rag)              # retrieval for the rest
+answer = await engine.aask("why was recovery poor on the 14th?")
+```
+
+The decoders are pure functions over bytes and need no Bluetooth stack; live
+capture needs `pip install raganything[biosignal]`. See
+**[docs/ble_fitness_gap_analysis.md](docs/ble_fitness_gap_analysis.md)** for what
+today's platforms discard and why,
+**[docs/biosignal_query_layer.md](docs/biosignal_query_layer.md)** for how
+questions are routed, computed and verified, and
+`examples/biosignal_example.py` for a runnable walkthrough that needs no
+hardware.
+
 ### Public media URLs (CDN / object storage)
 
 When ingestion runs on a server but your UI or another service needs **HTTPS** (or S3-style) links to figures, set:
