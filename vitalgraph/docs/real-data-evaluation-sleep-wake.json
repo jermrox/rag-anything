@@ -1,0 +1,189 @@
+{
+  "dataset": "physionet/slpdb",
+  "task": "two-class sleep/wake",
+  "leave_one_subject_out": {
+    "n_subjects": 16,
+    "mean_accuracy": 0.6158,
+    "worst_subject": "slp01a",
+    "worst_accuracy": 0.2092,
+    "subjects_without_skill": [
+      "slp01a",
+      "slp01b",
+      "slp02a",
+      "slp02b",
+      "slp03",
+      "slp04",
+      "slp14",
+      "slp37",
+      "slp48",
+      "slp59",
+      "slp60",
+      "slp61",
+      "slp67x"
+    ],
+    "implausible_subjects": [],
+    "works_for_everyone": false,
+    "per_subject": {
+      "slp01a": {
+        "accuracy": 0.2092,
+        "baseline_accuracy": 0.9707,
+        "margin_over_baseline": -0.7615,
+        "kappa": -0.0066,
+        "balanced_accuracy": 0.4541,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 20.9% accuracy against a 97.1% majority-class baseline (margin -76.2%), kappa -0.01. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp01b": {
+        "accuracy": 0.575,
+        "baseline_accuracy": 0.5,
+        "margin_over_baseline": 0.075,
+        "kappa": 0.15,
+        "balanced_accuracy": 0.575,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 57.5% accuracy against a 50.0% majority-class baseline (margin +7.5%), kappa 0.15. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp02a": {
+        "accuracy": 0.7784,
+        "baseline_accuracy": 0.875,
+        "margin_over_baseline": -0.0966,
+        "kappa": 0.4046,
+        "balanced_accuracy": 0.8442,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 77.8% accuracy against a 87.5% majority-class baseline (margin -9.7%), kappa 0.40. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp02b": {
+        "accuracy": 0.6022,
+        "baseline_accuracy": 0.6022,
+        "margin_over_baseline": 0.0,
+        "kappa": 0.1631,
+        "balanced_accuracy": 0.5809,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 60.2% accuracy against a 60.2% majority-class baseline (margin +0.0%), kappa 0.16. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp03": {
+        "accuracy": 0.553,
+        "baseline_accuracy": 0.8048,
+        "margin_over_baseline": -0.2518,
+        "kappa": 0.1423,
+        "balanced_accuracy": 0.618,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 55.3% accuracy against a 80.5% majority-class baseline (margin -25.2%), kappa 0.14. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp04": {
+        "accuracy": 0.6736,
+        "baseline_accuracy": 0.775,
+        "margin_over_baseline": -0.1014,
+        "kappa": 0.1615,
+        "balanced_accuracy": 0.5901,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 67.4% accuracy against a 77.5% majority-class baseline (margin -10.1%), kappa 0.16. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp14": {
+        "accuracy": 0.5961,
+        "baseline_accuracy": 0.5498,
+        "margin_over_baseline": 0.0463,
+        "kappa": 0.1671,
+        "balanced_accuracy": 0.5819,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 59.6% accuracy against a 55.0% majority-class baseline (margin +4.6%), kappa 0.17. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp16": {
+        "accuracy": 0.6291,
+        "baseline_accuracy": 0.5455,
+        "margin_over_baseline": 0.0837,
+        "kappa": 0.2471,
+        "balanced_accuracy": 0.6228,
+        "has_skill": true,
+        "is_implausible": false,
+        "verdict": "Beats the majority baseline: 62.9% against 54.5% (margin +8.4%), kappa 0.25, balanced accuracy 62.3%."
+      },
+      "slp32": {
+        "accuracy": 0.675,
+        "baseline_accuracy": 0.3844,
+        "margin_over_baseline": 0.2906,
+        "kappa": 0.3744,
+        "balanced_accuracy": 0.7055,
+        "has_skill": true,
+        "is_implausible": false,
+        "verdict": "Beats the majority baseline: 67.5% against 38.4% (margin +29.1%), kappa 0.37, balanced accuracy 70.6%."
+      },
+      "slp37": {
+        "accuracy": 0.5653,
+        "baseline_accuracy": 0.8924,
+        "margin_over_baseline": -0.3271,
+        "kappa": 0.1054,
+        "balanced_accuracy": 0.6333,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 56.5% accuracy against a 89.2% majority-class baseline (margin -32.7%), kappa 0.11. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp48": {
+        "accuracy": 0.6627,
+        "baseline_accuracy": 0.7194,
+        "margin_over_baseline": -0.0567,
+        "kappa": 0.0974,
+        "balanced_accuracy": 0.5451,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 66.3% accuracy against a 71.9% majority-class baseline (margin -5.7%), kappa 0.10. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp59": {
+        "accuracy": 0.6659,
+        "baseline_accuracy": 0.6943,
+        "margin_over_baseline": -0.0284,
+        "kappa": 0.1646,
+        "balanced_accuracy": 0.5775,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 66.6% accuracy against a 69.4% majority-class baseline (margin -2.8%), kappa 0.16. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp60": {
+        "accuracy": 0.6225,
+        "baseline_accuracy": 0.5926,
+        "margin_over_baseline": 0.0299,
+        "kappa": 0.1619,
+        "balanced_accuracy": 0.5755,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 62.3% accuracy against a 59.3% majority-class baseline (margin +3.0%), kappa 0.16. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp61": {
+        "accuracy": 0.6458,
+        "baseline_accuracy": 0.8278,
+        "margin_over_baseline": -0.1819,
+        "kappa": 0.1966,
+        "balanced_accuracy": 0.652,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 64.6% accuracy against a 82.8% majority-class baseline (margin -18.2%), kappa 0.20. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      },
+      "slp66": {
+        "accuracy": 0.795,
+        "baseline_accuracy": 0.6014,
+        "margin_over_baseline": 0.1936,
+        "kappa": 0.5781,
+        "balanced_accuracy": 0.7929,
+        "has_skill": true,
+        "is_implausible": false,
+        "verdict": "Beats the majority baseline: 79.5% against 60.1% (margin +19.4%), kappa 0.58, balanced accuracy 79.3%."
+      },
+      "slp67x": {
+        "accuracy": 0.6039,
+        "baseline_accuracy": 0.5325,
+        "margin_over_baseline": 0.0714,
+        "kappa": 0.1914,
+        "balanced_accuracy": 0.5942,
+        "has_skill": false,
+        "is_implausible": false,
+        "verdict": "No demonstrated skill: 60.4% accuracy against a 53.2% majority-class baseline (margin +7.1%), kappa 0.19. Predicting the commonest stage every epoch would do about as well. Do not describe this as staging."
+      }
+    }
+  }
+}

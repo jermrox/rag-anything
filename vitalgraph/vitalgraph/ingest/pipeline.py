@@ -251,7 +251,9 @@ class IngestPipeline:
         included -- that is the whole point of the distinction.
         """
         provenance = self.provenance_for(result, source_url)
-        items = to_content_list(result.chunks, provenance)
+        items = to_content_list(
+            result.chunks, provenance, repo=result.repo, ref=result.ref
+        )
         items.extend(self.symbols.to_content_list())
         items.extend(self.registry.to_content_list())
         return items

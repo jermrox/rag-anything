@@ -16,6 +16,7 @@ from vitalgraph.acquire.base import (
     summarise_licensing,
     Artifact,
 )
+from vitalgraph.acquire import licensing
 from vitalgraph.acquire.licensing import classify_spdx, detect_license
 
 
@@ -68,6 +69,42 @@ def test_agpl_is_not_mistaken_for_gpl():
     assert f.spdx_id == "AGPL-3.0-only"
 
 
+def test_gpl3_is_not_mistaken_for_agpl_because_it_mentions_agpl():
+    """GPL-3.0 section 13 names the Affero GPL. That is a cross-reference.
+
+    Regression: the first real harvest classified every GPL-3.0 project as
+    AGPL-3.0, because a whole-document search found section 13's wording. A
+    licence names itself at the top and discusses other licences further down,
+    so title matching is confined to the opening of the file.
+    """
+    gpl3 = (
+        "                    GNU GENERAL PUBLIC LICENSE\n"
+        "                       Version 3, 29 June 2007\n\n"
+        + "Preamble and terms and conditions follow.\n"
+        * 400
+        + "  13. Use with the GNU Affero General Public License.\n"
+        "  Notwithstanding any other provision of this License, you have\n"
+        "permission to link or combine any covered work with a work licensed\n"
+        "under version 3 of the GNU Affero General Public License.\n"
+    )
+    assert len(gpl3) > licensing.TITLE_WINDOW_CHARS * 2, "fixture must be long enough"
+
+    finding = detect_license(gpl3)
+    assert finding.spdx_id == "GPL-3.0-only"
+    assert finding.license_class is LicenseClass.COPYLEFT
+
+
+def test_body_only_match_is_reported_with_lower_confidence():
+    """A signature found outside the title block is a weaker signal, and says so."""
+    buried = (
+        "Copyright notice.\n" * 200 + "\nPermission is hereby granted, free of charge"
+    )
+    finding = detect_license(buried)
+    assert finding.spdx_id == "MIT"
+    assert finding.confidence < 0.8
+    assert "document body" in finding.evidence
+
+
 def test_lgpl_is_not_mistaken_for_gpl():
     f = detect_license("GNU LESSER GENERAL PUBLIC LICENSE Version 3, 29 June 2007")
     assert f.spdx_id.startswith("LGPL")
@@ -76,6 +113,26 @@ def test_lgpl_is_not_mistaken_for_gpl():
 def test_proprietary_notice_is_detected():
     f = detect_license("Copyright Acme Inc. All rights reserved.")
     assert f.license_class is LicenseClass.PROPRIETARY
+
+
+def test_a_readme_claiming_a_licence_is_not_a_licence():
+    """Prose asserting a licence, with no licence text, stays UNKNOWN.
+
+    Found in the real harvest: sleep_classifiers ships no LICENSE file and
+    states "under an MIT license" in its README. Treating that as a grant
+    would be the gate failing open on the say-so of a sentence, so the
+    conservative resolution is the correct one -- the repository contributes
+    its methods, not its source.
+    """
+    readme = (
+        "# Sleep classifiers\n\n"
+        "Code for staging sleep from wrist motion and heart rate.\n\n"
+        "## License\n\n"
+        "This software is open source and under an MIT license.\n"
+    )
+    finding = detect_license(readme)
+    assert finding.license_class is LicenseClass.UNKNOWN
+    assert policy_for(finding.license_class) is UsePolicy.FACTS_ONLY
 
 
 def test_unrecognised_text_is_unknown_not_permissive():

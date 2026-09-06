@@ -45,6 +45,96 @@ _BIT_MASK = re.compile(r"&\s*0[xX]([0-9a-fA-F]{1,2})\b")
 #: UUID-shaped hex that is almost always something else.
 _UUID16_NOISE = {"0000", "FFFF", "00FF", "FF00", "0001", "1000", "8000"}
 
+#: Ranges the Bluetooth SIG actually allocates 16-bit UUIDs from, as inclusive
+#: ``(low, high, what)`` triples.
+#:
+#: The first harvest is what forced this. Any four-digit hex literal looks like
+#: a 16-bit UUID, so a bare pattern match reported ``0x1021`` -- the CCITT
+#: CRC-16 polynomial -- as a characteristic, along with array bounds, bit masks
+#: and version constants: roughly nine tenths of the 3620 "protocol facts" from
+#: ten repositories were nothing of the kind. A blocklist cannot fix that,
+#: because the noise is unbounded and the signal is not. The allocated ranges
+#: are, so this is an allowlist.
+SIG_UUID16_RANGES: Tuple[Tuple[int, int, str], ...] = (
+    (0x1800, 0x18FF, "GATT service"),
+    (0x2700, 0x27FF, "unit"),
+    (0x2800, 0x28FF, "attribute type declaration"),
+    (0x2900, 0x29FF, "characteristic descriptor"),
+    (0x2A00, 0x2BFF, "characteristic type"),
+    (0xFC00, 0xFDFF, "member service (vendor-allocated by the SIG)"),
+    (0xFE00, 0xFEFF, "member service (vendor-allocated by the SIG)"),
+)
+
+#: Words that make a line about UUIDs regardless of the value's range. This is
+#: how a genuinely proprietary 16-bit UUID outside SIG ranges is still caught:
+#: the code around it says what it is.
+#:
+#: Boundaries are ``(?<![A-Za-z0-9])`` rather than ``\b`` because identifiers
+#: are written ``VENDOR_CHAR_UUID`` and ``service_uuid``: underscore is a word
+#: character, so ``\b`` refuses to match at exactly the places these words
+#: appear in code.
+_UUID_CONTEXT = re.compile(
+    r"(?<![A-Za-z0-9])"
+    r"(uuid|guid|characteristic|service|descriptor|gatt|assigned_number)"
+    r"(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
+
+
+#: Evidence that a file concerns Bluetooth at all. Checked once per file, not
+#: per line, because a module's subject is a property of the module.
+#: Same underscore-aware boundaries as ``_UUID_CONTEXT``: ``ble_device`` and
+#: ``gatt_server`` are exactly the names this has to catch.
+_BLUETOOTH_FILE_CONTEXT = re.compile(
+    r"(?<![A-Za-z0-9])"
+    # Deliberately narrow. "characteristic" and "peripheral" were here and had
+    # to go: FHIR uses `characteristic` as a field name throughout
+    # PlanDefinition and Group, and "peripheral" is ordinary clinical English.
+    # Both let a FHIR client's test fixtures register as GATT services. A
+    # marker earns its place only if it means Bluetooth and nothing else.
+    r"(bluetooth|bluez|corebluetooth|gatt|btle|ble|bleak|l2cap)"
+    r"(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
+
+
+def is_bluetooth_context(source: str, path: str) -> bool:
+    """Whether a file is plausibly about Bluetooth.
+
+    A 128-bit UUID means "proprietary GATT service" only in a file that has
+    something to do with Bluetooth. Elsewhere it is a primary key or a test
+    fixture, and reporting it as a vendor's service is a fabricated protocol
+    fact -- the exact failure this registry must not produce.
+    """
+    if _BLUETOOTH_FILE_CONTEXT.search(path):
+        return True
+    return bool(_BLUETOOTH_FILE_CONTEXT.search(source))
+
+
+def sig_uuid16_role(value: int) -> str | None:
+    """What the SIG allocates ``value`` for, or None if it allocates nothing."""
+    for low, high, role in SIG_UUID16_RANGES:
+        if low <= value <= high:
+            return role
+    return None
+
+
+def is_plausible_uuid16(raw: str, line: str) -> bool:
+    """Whether a four-digit hex literal is plausibly a 16-bit UUID.
+
+    Accepts a value inside a SIG-allocated range, or any value on a line whose
+    wording is about UUIDs. Rejecting everything else is what keeps a CRC
+    polynomial out of the protocol registry. This under-reports rather than
+    over-reports on purpose: a missing fact is a gap, while a fabricated one is
+    a confidently wrong answer about how a device works.
+    """
+    upper = raw.upper()
+    if upper in _UUID16_NOISE:
+        return False
+    if sig_uuid16_role(int(upper, 16)) is not None:
+        return True
+    return bool(_UUID_CONTEXT.search(line))
+
 
 @dataclass(frozen=True, slots=True)
 class ProtocolFact:
@@ -103,11 +193,22 @@ def extract_facts(
     """
     facts: List[ProtocolFact] = []
     lines = source.splitlines()
+    bluetooth_file = is_bluetooth_context(source, path)
 
     for lineno, line in enumerate(lines, start=1):
         for match in _UUID128.finditer(line):
             raw = match.group(1)
             sig_form = _is_sig_uuid(raw)
+            if not sig_form and not bluetooth_file:
+                # A 128-bit UUID in a file that is not about Bluetooth is a
+                # database key, a test fixture or a namespace id -- anything
+                # but a proprietary GATT service. Calling it one was how a
+                # FHIR client's `urn:uuid:` fixtures entered the registry.
+                #
+                # File context, not line context: FHIR's own `urn:uuid:...`
+                # contains the word "uuid", so the line says nothing useful.
+                # What a UUID means is a property of the module it lives in.
+                continue
             if sig_form:
                 facts.append(
                     ProtocolFact(
@@ -135,7 +236,7 @@ def extract_facts(
 
         for match in _UUID16.finditer(line):
             raw = match.group(1).upper()
-            if raw in _UUID16_NOISE:
+            if not is_plausible_uuid16(raw, line):
                 continue
             facts.append(
                 ProtocolFact(
@@ -155,10 +256,16 @@ def extract_facts(
         uuid_here = _UUID128.search(line) or _UUID16.search(line)
         if uuid_here:
             raw = uuid_here.group(1)
-            if len(raw) == 4 and raw.upper() not in _UUID16_NOISE:
+            if len(raw) == 4 and is_plausible_uuid16(raw, line):
                 current = _normalise_uuid16(raw)
             elif len(raw) > 4:
-                current = _is_sig_uuid(raw) or raw.lower()
+                sig_form = _is_sig_uuid(raw)
+                # Same gate as the first pass. Without it, a 128-bit value
+                # rejected as a UUID above still became the anchor that later
+                # byte offsets were attributed to, so the decoding facts
+                # survived even though the UUID they name did not.
+                if sig_form or bluetooth_file:
+                    current = sig_form or raw.lower()
         if current is None:
             continue
         for match in _STRUCT_FMT.finditer(line):
