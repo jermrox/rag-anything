@@ -1,0 +1,213 @@
+{
+  "repositories_harvested": 8,
+  "repositories_failed": 0,
+  "total_chunks": 22076,
+  "total_protocol_facts": 372,
+  "policy_breakdown": {
+    "facts_only": 5,
+    "verbatim": 3
+  },
+  "verbatim_permitted": [
+    "oref0",
+    "EmotiBit_FeatherWing",
+    "open-wearables"
+  ],
+  "facts_only": [
+    "polar-ble-sdk",
+    "bleakheart",
+    "movesense-ble-ecg-firmware",
+    "xdrip",
+    "cgm-remote-monitor"
+  ],
+  "license_mismatches": [
+    {
+      "name": "bleakheart",
+      "expected": "MIT",
+      "detected": "MPL-2.0"
+    },
+    {
+      "name": "xdrip",
+      "expected": "GPL-3.0",
+      "detected": "GPL-3.0-only"
+    },
+    {
+      "name": "cgm-remote-monitor",
+      "expected": "AGPL-3.0",
+      "detected": "AGPL-3.0-only"
+    },
+    {
+      "name": "EmotiBit_FeatherWing",
+      "expected": "See-License-File",
+      "detected": "MIT"
+    }
+  ],
+  "repositories": [
+    {
+      "name": "polar-ble-sdk",
+      "category": "medical_device",
+      "url": "https://github.com/polarofficial/polar-ble-sdk.git",
+      "commit": "3d15da61dd0c63e6be2582d03fd80f6c7ba02e11",
+      "citation_ref": "polar-ble-sdk@3d15da6",
+      "reused_checkout": false,
+      "expected_spdx": null,
+      "detected_spdx": null,
+      "license_matches_expectation": null,
+      "policy": "facts_only",
+      "files_ingested": 774,
+      "chunks": 6775,
+      "exact_chunks": 0,
+      "protocol_facts": 134,
+      "languages": [
+        "c",
+        "java",
+        "javascript",
+        "kotlin",
+        "swift"
+      ]
+    },
+    {
+      "name": "bleakheart",
+      "category": "medical_device",
+      "url": "https://github.com/fsmeraldi/bleakheart.git",
+      "commit": "b4b68964e9a5940377e7d82c589008183bcdb9de",
+      "citation_ref": "bleakheart@b4b6896",
+      "reused_checkout": false,
+      "expected_spdx": "MIT",
+      "detected_spdx": "MPL-2.0",
+      "license_matches_expectation": false,
+      "policy": "facts_only",
+      "files_ingested": 10,
+      "chunks": 50,
+      "exact_chunks": 50,
+      "protocol_facts": 24,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "movesense-ble-ecg-firmware",
+      "category": "medical_device",
+      "url": "https://github.com/JonasPrimbs/movesense-ble-ecg-firmware.git",
+      "commit": "742213d6f2e9228aef13fa6d65d931671dcb29b8",
+      "citation_ref": "movesense-ble-ecg-firmware@742213d",
+      "reused_checkout": false,
+      "expected_spdx": null,
+      "detected_spdx": null,
+      "license_matches_expectation": null,
+      "policy": "facts_only",
+      "files_ingested": 783,
+      "chunks": 6005,
+      "exact_chunks": 29,
+      "protocol_facts": 42,
+      "languages": [
+        "c",
+        "cpp",
+        "javascript",
+        "python"
+      ]
+    },
+    {
+      "name": "xdrip",
+      "category": "medical_device",
+      "url": "https://github.com/NightscoutFoundation/xDrip.git",
+      "commit": "36122b6ef8a7f2fd22a3f3eb934c5088186f12f8",
+      "citation_ref": "xdrip@36122b6",
+      "reused_checkout": false,
+      "expected_spdx": "GPL-3.0",
+      "detected_spdx": "GPL-3.0-only",
+      "license_matches_expectation": false,
+      "policy": "facts_only",
+      "files_ingested": 1431,
+      "chunks": 1834,
+      "exact_chunks": 6,
+      "protocol_facts": 159,
+      "languages": [
+        "java",
+        "kotlin",
+        "python"
+      ]
+    },
+    {
+      "name": "cgm-remote-monitor",
+      "category": "medical_device",
+      "url": "https://github.com/nightscout/cgm-remote-monitor.git",
+      "commit": "92d0834219aa771b5837dbcbf1baeb839a200cf6",
+      "citation_ref": "cgm-remote-monitor@92d0834",
+      "reused_checkout": false,
+      "expected_spdx": "AGPL-3.0",
+      "detected_spdx": "AGPL-3.0-only",
+      "license_matches_expectation": false,
+      "policy": "facts_only",
+      "files_ingested": 431,
+      "chunks": 1498,
+      "exact_chunks": 0,
+      "protocol_facts": 0,
+      "languages": [
+        "javascript"
+      ]
+    },
+    {
+      "name": "oref0",
+      "category": "medical_device",
+      "url": "https://github.com/openaps/oref0.git",
+      "commit": "88cf032aa74ff25f69464a7d9cd601ee3940c0b3",
+      "citation_ref": "oref0@88cf032",
+      "reused_checkout": false,
+      "expected_spdx": "MIT",
+      "detected_spdx": "MIT",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 74,
+      "chunks": 169,
+      "exact_chunks": 53,
+      "protocol_facts": 0,
+      "languages": [
+        "javascript",
+        "python"
+      ]
+    },
+    {
+      "name": "EmotiBit_FeatherWing",
+      "category": "medical_device",
+      "url": "https://github.com/EmotiBit/EmotiBit_FeatherWing.git",
+      "commit": "47f981cef55dd1e0c012b85c7473624a2492c765",
+      "citation_ref": "EmotiBit_FeatherWing@47f981c",
+      "reused_checkout": false,
+      "expected_spdx": "See-License-File",
+      "detected_spdx": "MIT",
+      "license_matches_expectation": false,
+      "policy": "verbatim",
+      "files_ingested": 28,
+      "chunks": 81,
+      "exact_chunks": 1,
+      "protocol_facts": 0,
+      "languages": [
+        "c",
+        "cpp",
+        "python"
+      ]
+    },
+    {
+      "name": "open-wearables",
+      "category": "medical_device",
+      "url": "https://github.com/the-momentum/open-wearables.git",
+      "commit": "ca85d8352b56951e516ce34e47171dfa8941d024",
+      "citation_ref": "open-wearables@ca85d83",
+      "reused_checkout": false,
+      "expected_spdx": null,
+      "detected_spdx": "MIT",
+      "license_matches_expectation": null,
+      "policy": "verbatim",
+      "files_ingested": 833,
+      "chunks": 5664,
+      "exact_chunks": 5073,
+      "protocol_facts": 13,
+      "languages": [
+        "javascript",
+        "python",
+        "typescript"
+      ]
+    }
+  ],
+  "failures": []
+}
