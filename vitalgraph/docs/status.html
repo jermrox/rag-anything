@@ -1,0 +1,589 @@
+<title>Vybe Health Capability Report</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground: #eceff0;
+  --surface: #ffffff;
+  --sunken: #e2e7e8;
+  --ink: #14191b;
+  --ink-soft: #47555a;
+  --ink-dim: #6d7b80;
+  --rule: #cfd7d9;
+  --accent: #0d6e6b;
+  --accent-soft: #d5e8e7;
+  --good: #2c6e45;
+  --warn: #8a5a10;
+  --crit: #9c3128;
+  --shadow: 0 1px 2px rgba(20, 25, 27, .07);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #12181a;
+    --surface: #192023;
+    --sunken: #101618;
+    --ink: #e6ecee;
+    --ink-soft: #a9b8bc;
+    --ink-dim: #7d8d92;
+    --rule: #2c3639;
+    --accent: #4fbfb8;
+    --accent-soft: #1d3634;
+    --good: #6cc08b;
+    --warn: #d9a441;
+    --crit: #e0776b;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #12181a;
+  --surface: #192023;
+  --sunken: #101618;
+  --ink: #e6ecee;
+  --ink-soft: #a9b8bc;
+  --ink-dim: #7d8d92;
+  --rule: #2c3639;
+  --accent: #4fbfb8;
+  --accent-soft: #1d3634;
+  --good: #6cc08b;
+  --warn: #d9a441;
+  --crit: #e0776b;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0;
+  padding: 0 20px 80px;
+}
+.wrap { max-width: 1000px; margin: 0 auto; }
+
+h1, h2, h3 { font-family: Bitter, Georgia, serif; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.35rem; font-weight: 600; letter-spacing: -.015em; line-height: 1.12; }
+h2 { font-size: 1.3rem; font-weight: 600; letter-spacing: -.005em; }
+h3 { font-size: 1.02rem; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.mono, code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .86em; }
+.dim { color: var(--ink-dim); }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* --- masthead --- */
+.masthead { padding: 56px 0 34px; display: grid; gap: 18px; }
+.eyebrow {
+  font-family: "IBM Plex Mono", monospace; font-size: .72rem; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--accent);
+}
+.lede { font-size: 1.08rem; color: var(--ink-soft); max-width: 64ch; }
+.stamp {
+  font-family: "IBM Plex Mono", monospace; font-size: .74rem; color: var(--ink-dim);
+  border-top: 1px solid var(--rule); padding-top: 12px;
+}
+
+/* --- strips --- */
+section { border-top: 1px solid var(--rule); padding: 34px 0; display: grid; gap: 20px; }
+.strip-head { display: grid; gap: 8px; }
+.strip-label {
+  font-family: "IBM Plex Mono", monospace; font-size: .7rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-dim);
+}
+
+/* --- tables --- */
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: .9rem; }
+th {
+  text-align: left; font-weight: 500; font-size: .72rem; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-dim);
+  padding: 0 14px 8px 0; border-bottom: 1px solid var(--rule); white-space: nowrap;
+}
+th.num { text-align: right; }
+td { padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tr.best td { background: var(--accent-soft); }
+tbody tr:last-child td { border-bottom: none; }
+
+.policy {
+  font-family: "IBM Plex Mono", monospace; font-size: .72rem; white-space: nowrap;
+  padding: 2px 7px; border-radius: 2px; border: 1px solid var(--rule);
+}
+.policy-verbatim { color: var(--good); border-color: currentColor; }
+.policy-facts_only { color: var(--warn); border-color: currentColor; }
+
+/* --- factors --- */
+.factors { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.factor { background: var(--surface); padding: 18px 20px; display: grid; gap: 10px; }
+.factor header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.question { color: var(--ink-soft); font-style: italic; }
+.badge {
+  font-family: "IBM Plex Mono", monospace; font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 2px;
+}
+.badge-sensed { background: var(--accent-soft); color: var(--accent); }
+.badge-asked { background: var(--sunken); color: var(--ink-dim); }
+.factor dl { margin: 0; display: grid; grid-template-columns: 172px 1fr; gap: 4px 16px; font-size: .88rem; }
+.factor dt { color: var(--ink-dim); font-size: .8rem; }
+.factor dd { margin: 0; }
+.note { font-size: .88rem; color: var(--ink-soft); border-left: 2px solid var(--accent); padding-left: 12px; }
+
+/* --- chart --- */
+.chart { width: 100%; max-width: 660px; height: auto; }
+.axis-tick { stroke: var(--rule); stroke-width: 1; }
+.axis-zero { stroke: var(--ink-soft); stroke-width: 1; }
+.tick-label { fill: var(--ink-dim); font-family: "IBM Plex Mono", monospace; font-size: 9px; }
+.row-label { fill: var(--ink-soft); font-family: "IBM Plex Mono", monospace; font-size: 10px; }
+.row-value { fill: var(--ink-dim); font-family: "IBM Plex Mono", monospace; font-size: 9.5px; }
+.bar-skill { fill: var(--accent); }
+.bar-noskill { fill: var(--crit); opacity: .72; }
+.legend { display: flex; gap: 20px; font-size: .8rem; color: var(--ink-soft); flex-wrap: wrap; }
+.key { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; }
+
+/* --- verdict --- */
+.verdict {
+  background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--crit);
+  padding: 18px 22px; display: grid; gap: 10px; box-shadow: var(--shadow);
+}
+.verdict h3 { color: var(--crit); }
+
+/* --- counters --- */
+.counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.counter { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; }
+.counter .v { font-family: Bitter, Georgia, serif; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.counter .k { font-size: .74rem; color: var(--ink-dim); }
+
+/* --- gaps --- */
+.gaps { display: grid; gap: 0; border: 1px solid var(--rule); background: var(--rule); }
+.gap { background: var(--surface); padding: 15px 18px; display: grid; grid-template-columns: 230px 1fr; gap: 6px 22px; }
+.gap h3 { font-size: .95rem; }
+.gap p { font-size: .89rem; color: var(--ink-soft); }
+
+@media (max-width: 700px) {
+  .factor dl, .gap { grid-template-columns: 1fr; }
+  h1 { font-size: 1.85rem; }
+}
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">Vybe Health &#183; capability report</div>
+    <h1>What this system can measure, and what it only guesses at</h1>
+    <p class="lede">A health engine is only worth what its weakest claim is worth. This page
+    lists every sensor reading we can decode, every factor we cannot sense, and the one
+    accuracy number we have actually measured against expert-scored human sleep &#8212;
+    including the ten subjects it fails on.</p>
+    <div class="stamp">Generated from the source tree on 2026-09-05
+    &#183; 567 tests &#183; every figure below is read from code or from a committed
+    evaluation run, none is typed in by hand</div>
+  </header>
+
+  <section>
+    <div class="strip-head">
+      <div class="strip-label">01 &#183; Sensor layer</div>
+      <h2>Readings we can decode off a device</h2>
+      <p>Bluetooth health characteristics with a working decoder and tests behind them.
+      Absent measurements stay absent: an IEEE&#8202;11073 &#8220;not a number&#8221; comes
+      back as nothing, never as a zero that a chart would draw.</p>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>UUID</th><th>Characteristic</th><th>Yields</th><th>What it is not</th></tr></thead>
+      <tbody><tr>
+          <td class="mono">0x2A37</td>
+          <td>Heart Rate Measurement</td>
+          <td>Beats per minute, plus RR intervals at 1/1024 s resolution</td>
+          <td class="dim">RR intervals are the whole basis for HRV. Most bands never expose them.</td>
+        </tr><tr>
+          <td class="mono">0x2A9C</td>
+          <td>Body Composition</td>
+          <td>Fat percentage, muscle mass, water, basal metabolism</td>
+          <td class="dim">Impedance estimates, not a scan. Trends are worth more than any one reading.</td>
+        </tr><tr>
+          <td class="mono">0x2A9D</td>
+          <td>Weight Measurement</td>
+          <td>Body mass, in kg at 5 g or lb at 10 mg resolution</td>
+          <td class="dim">Resolution differs by unit; the decoder keeps them apart.</td>
+        </tr><tr>
+          <td class="mono">0x2A18</td>
+          <td>Glucose Measurement</td>
+          <td>Concentration, sample type, sample location, sequence number</td>
+          <td class="dim">Meter data. Nothing on a wrist measures this today.</td>
+        </tr><tr>
+          <td class="mono">0x2A35</td>
+          <td>Blood Pressure</td>
+          <td>Systolic, diastolic, mean arterial pressure, pulse rate</td>
+          <td class="dim">Carries status flags: body movement, loose cuff, irregular pulse.</td>
+        </tr><tr>
+          <td class="mono">0x2A53</td>
+          <td>Running Speed and Cadence</td>
+          <td>Instantaneous speed, cadence, stride length, total distance</td>
+          <td class="dim">Foot pod or shoe sensor. A wrist infers cadence; this measures it.</td>
+        </tr><tr>
+          <td class="mono">0x2A5B</td>
+          <td>Cycling Speed and Cadence</td>
+          <td>Wheel and crank revolutions with event timestamps</td>
+          <td class="dim">Counters roll over; the decoder reports raw counts, not derived speed.</td>
+        </tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="strip-head">
+      <div class="strip-label">02 &#183; The five factors</div>
+      <h2>Three of these five cannot be sensed from a wrist</h2>
+      <p>Health is organised into five factors, and the honest answer to &#8220;can a band
+      see this?&#8221; is completely different for each. Connection has no passive input at
+      all, deliberately: six meetings in a calendar is not a social-cohesion score, and
+      turning one into the other is false precision.</p>
+    </div>
+    <div class="factors">
+            <article class="factor">
+              <header>
+                <h3>Sleep</h3>
+                <span class="badge badge-sensed">Passively sensed</span>
+              </header>
+              <p class="question">Am I restoring?</p>
+              <dl>
+                <dt>Sensed without asking</dt>
+                <dd>sleep_duration, sleep_timing, sleep_consistency, hrv, resting_heart_rate, respiratory_rate, skin_temperature, circadian_phase</dd>
+                <dt>Requires the person</dt>
+                <dd>psqi, subjective_sleep_quality, fatigue_rating, travel_and_jet_lag</dd>
+                <dt>Characteristics decoded</dt>
+                <dd class="mono">0x2A1C, 0x2A37, 0x2A5F</dd>
+              </dl>
+              <p class="note">The strongest factor for wrist sensing. Duration, timing and consistency are directly measurable, and HRV, resting heart rate and respiratory rate all follow from RR intervals alone. Staging is the weak part: it is inferred, not measured.</p>
+            </article>
+            <article class="factor">
+              <header>
+                <h3>Movement</h3>
+                <span class="badge badge-sensed">Passively sensed</span>
+              </header>
+              <p class="question">Am I physically capable and appropriately loaded?</p>
+              <dl>
+                <dt>Sensed without asking</dt>
+                <dd>steps, training_load, heart_rate, vo2max_estimate, sedentary_time, workout_detection</dd>
+                <dt>Requires the person</dt>
+                <dd>rpe, soreness, body_composition_scan, strength_tests, mobility, external_training_apps</dd>
+                <dt>Characteristics decoded</dt>
+                <dd class="mono">0x2A53, 0x2A5B</dd>
+              </dl>
+              <p class="note">Well covered passively for volume and intensity. Capability -- strength, mobility, whether load is *appropriate* -- is not sensed at all and needs active input.</p>
+            </article>
+            <article class="factor">
+              <header>
+                <h3>Nutrition</h3>
+                <span class="badge badge-sensed">Passively sensed</span>
+              </header>
+              <p class="question">Am I adequately fuelled?</p>
+              <dl>
+                <dt>Sensed without asking</dt>
+                <dd>body_mass, body_composition, glucose</dd>
+                <dt>Requires the person</dt>
+                <dd>food_logging, hydration, caffeine, alcohol, supplements, meal_photos</dd>
+                <dt>Characteristics decoded</dt>
+                <dd class="mono">0x2A18, 0x2A9C, 0x2A9D</dd>
+              </dl>
+              <p class="note">The weakest factor for wrist sensing: a wrist cannot see food. The passive inputs listed here arrive from paired instruments -- a scale (0x2A9D), a body-composition device (0x2A9C), a glucose sensor (0x2A18) -- not from the band. Claiming otherwise is the clearest place this model could start hand-waving.</p>
+            </article>
+            <article class="factor">
+              <header>
+                <h3>Mind</h3>
+                <span class="badge badge-sensed">Passively sensed</span>
+              </header>
+              <p class="question">How am I functioning psychologically and cognitively?</p>
+              <dl>
+                <dt>Sensed without asking</dt>
+                <dd>hrv, resting_heart_rate, sleep_derived_signals</dd>
+                <dt>Requires the person</dt>
+                <dd>mood, perceived_stress, cognitive_tests, reaction_time, burnout_survey, journaling</dd>
+                <dt>Characteristics decoded</dt>
+                <dd class="mono"><span class="dim">none</span></dd>
+              </dl>
+              <p class="note">Physiological arousal is measurable; psychological state is not. HRV is a stress *proxy* and a poor one at the individual level -- it moves with training load, alcohol, illness and position as readily as with stress. This factor leans on active input, and the passive signals mainly indicate when to ask.</p>
+            </article>
+            <article class="factor">
+              <header>
+                <h3>Connection</h3>
+                <span class="badge badge-asked">Only by asking</span>
+              </header>
+              <p class="question">How connected and supported is my life?</p>
+              <dl>
+                <dt>Sensed without asking</dt>
+                <dd><em class="dim">nothing &#8212; this factor is invisible to a band</em></dd>
+                <dt>Requires the person</dt>
+                <dd>loneliness_scale, social_connectedness, relationship_support, time_with_others</dd>
+                <dt>Characteristics decoded</dt>
+                <dd class="mono"><span class="dim">none</span></dd>
+              </dl>
+              <p class="note">No passive input, deliberately. Calendar and communication patterns can generate hypotheses -- and do, in the hypothesis engine -- but six meetings is not a social-cohesion score. Scheduled interaction is not connection, and turning one into the other is false precision. This factor is measured by asking.</p>
+            </article></div>
+  </section>
+
+  <section>
+    <div class="strip-head">
+      <div class="strip-label">03 &#183; Medical context</div>
+      <h2>Not a sixth factor &#8212; a layer beneath all five</h2>
+      <p>A beta blocker does not belong to a factor. It changes what every heart-rate-derived
+      reading in three of them means. Modelling context as a modifier rather than a peer is
+      what lets an interpretation say <em>why</em> it was adjusted.</p>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>Context</th><th>Kind</th><th>Reframes</th><th>How the reading changes</th></tr></thead>
+      <tbody><tr>
+          <td>blood pressure</td>
+          <td class="dim">vital sign</td>
+          <td>movement, sleep, mind</td>
+          <td>Elevated readings change what a training recommendation may say and make an unexplained resting heart rate rise more significant.</td>
+        </tr><tr>
+          <td>body composition</td>
+          <td class="dim">body composition</td>
+          <td>movement, nutrition</td>
+          <td>Distinguishes mass change that is lean tissue from mass change that is not, which is the difference between a training block working and a diet failing.</td>
+        </tr><tr>
+          <td>beta blocker</td>
+          <td class="dim">medication</td>
+          <td>sleep, movement, mind</td>
+          <td>Suppresses heart rate and blunts its response to load. Every heart-rate-derived reading -- resting heart rate, training zones, recovery -- must be read against this and never compared to an untreated population baseline.</td>
+        </tr><tr>
+          <td>atrial fibrillation</td>
+          <td class="dim">diagnosis</td>
+          <td>sleep, mind</td>
+          <td>Time-domain HRV becomes uninterpretable: RMSSD is elevated by the arrhythmia itself, not by parasympathetic tone. Reporting a recovery score from it would invert the truth.</td>
+        </tr><tr>
+          <td>thyroid function</td>
+          <td class="dim">lab result</td>
+          <td>sleep, movement, nutrition, mind</td>
+          <td>Shifts resting heart rate, temperature and energy availability together, so a simultaneous drift across several factors has a single explanation rather than four.</td>
+        </tr><tr>
+          <td>SSRI</td>
+          <td class="dim">medication</td>
+          <td>sleep, mind</td>
+          <td>Alters sleep architecture and can reduce HRV independently of stress, so a declining trend is not evidence of worsening psychological state.</td>
+        </tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="strip-head">
+      <div class="strip-label">04 &#183; Reference library</div>
+      <h2>Public implementations, indexed and searchable</h2>
+      <p>Thirteen repositories pinned at a commit, chunked by symbol and searchable without
+      a model or an API key. The licence gate decides what enters the corpus: permissive code
+      goes in verbatim with attribution, copyleft and unknown contribute protocol
+      <em>facts</em> only &#8212; that a characteristic carries a flags byte then a heart
+      rate is interoperability information, not expression.</p>
+    </div>
+    <div class="counters">
+      <div class="counter"><span class="v">13</span><span class="k">repositories</span></div>
+      <div class="counter"><span class="v">8,986</span><span class="k">symbol chunks</span></div>
+      <div class="counter"><span class="v">1,336</span><span class="k">protocol facts</span></div>
+      <div class="counter"><span class="v">3</span><span class="k">held to facts only</span></div>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>Repository</th><th>Pinned at</th><th>Category</th><th>Licence</th><th>Policy</th><th class="num">Chunks</th><th class="num">Facts</th></tr></thead>
+      <tbody><tr>
+              <td>bleak</td>
+              <td class="mono dim">bleak@496d16e</td>
+              <td>ble stack</td>
+              <td class="mono">MIT</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">598</td>
+              <td class="num">1,206</td>
+            </tr><tr>
+              <td>Android-BLE-Library</td>
+              <td class="mono dim">Android-BLE-Library@4a86e6c</td>
+              <td>ble stack</td>
+              <td class="mono">BSD-3-Clause</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">685</td>
+              <td class="num">74</td>
+            </tr><tr>
+              <td>IOS-CoreBluetooth-Mock</td>
+              <td class="mono dim">IOS-CoreBluetooth-Mock@5748c9e</td>
+              <td>ble stack</td>
+              <td class="mono">BSD-3-Clause</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">461</td>
+              <td class="num">5</td>
+            </tr><tr>
+              <td>Adafruit_CircuitPython_BLE</td>
+              <td class="mono dim">Adafruit_CircuitPython_BLE@82ada04</td>
+              <td>ble stack</td>
+              <td class="mono">MIT</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">235</td>
+              <td class="num">51</td>
+            </tr><tr>
+              <td>openhaystack</td>
+              <td class="mono dim">openhaystack@ea05dad</td>
+              <td>wearable protocol</td>
+              <td class="mono">AGPL-3.0-only</td>
+              <td><span class="policy policy-facts_only">Facts only</span></td>
+              <td class="num">369</td>
+              <td class="num">0</td>
+            </tr><tr>
+              <td>NeuroKit</td>
+              <td class="mono dim">NeuroKit@ff419d9</td>
+              <td>biosignal</td>
+              <td class="mono">MIT</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">1,101</td>
+              <td class="num">0</td>
+            </tr><tr>
+              <td>heartrate_analysis_python</td>
+              <td class="mono dim">heartrate_analysis_python@ef48d23</td>
+              <td>biosignal</td>
+              <td class="mono">MIT</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">59</td>
+              <td class="num">0</td>
+            </tr><tr>
+              <td>wfdb-python</td>
+              <td class="mono dim">wfdb-python@f627b5f</td>
+              <td>biosignal</td>
+              <td class="mono">MIT</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">423</td>
+              <td class="num">0</td>
+            </tr><tr>
+              <td>hrv-analysis</td>
+              <td class="mono dim">hrv-analysis@4fd889a</td>
+              <td>biosignal</td>
+              <td class="mono">GPL-3.0-only</td>
+              <td><span class="policy policy-facts_only">Facts only</span></td>
+              <td class="num">161</td>
+              <td class="num">0</td>
+            </tr><tr>
+              <td>sleep_classifiers</td>
+              <td class="mono dim">sleep_classifiers@ec9704f</td>
+              <td>sleep staging</td>
+              <td class="mono">unknown</td>
+              <td><span class="policy policy-facts_only">Facts only</span></td>
+              <td class="num">501</td>
+              <td class="num">0</td>
+            </tr><tr>
+              <td>yasa</td>
+              <td class="mono dim">yasa@dfddbd5</td>
+              <td>sleep staging</td>
+              <td class="mono">BSD-3-Clause</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">494</td>
+              <td class="num">0</td>
+            </tr><tr>
+              <td>deepsleepnet</td>
+              <td class="mono dim">deepsleepnet@eb72f9b</td>
+              <td>sleep staging</td>
+              <td class="mono">Apache-2.0</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">385</td>
+              <td class="num">0</td>
+            </tr><tr>
+              <td>client-py</td>
+              <td class="mono dim">client-py@2586be6</td>
+              <td>health interop</td>
+              <td class="mono">Apache-2.0</td>
+              <td><span class="policy policy-verbatim">Source + facts</span></td>
+              <td class="num">3,514</td>
+              <td class="num">0</td>
+            </tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="strip-head">
+      <div class="strip-label">05 &#183; The measured result</div>
+      <h2>Sleep staging from heart rate alone: 50.4%</h2>
+      <p>Trained and tested on 16 nights of MIT-BIH polysomnography
+      &#8212; 8,622 thirty-second epochs a technician scored by hand.
+      Held out one whole subject at a time, so no night appears on both sides of the split.
+      The same model scores 100% on our own simulator, which is why the simulator number is
+      worthless and this one is not.</p>
+    </div>
+
+    <svg viewBox="0 0 640 494" role="img" aria-label="Accuracy margin over the majority-class baseline, per subject" class="chart"><line x1="128.2" y1="28" x2="128.2" y2="476" class="axis-tick" /><text x="128.2" y="489" class="tick-label" text-anchor="middle">-40</text><line x1="228.6" y1="28" x2="228.6" y2="476" class="axis-tick" /><text x="228.6" y="489" class="tick-label" text-anchor="middle">-20</text><line x1="329.0" y1="28" x2="329.0" y2="476" class="axis-zero" /><text x="329.0" y="489" class="tick-label" text-anchor="middle">+0</text><line x1="429.4" y1="28" x2="429.4" y2="476" class="axis-tick" /><text x="429.4" y="489" class="tick-label" text-anchor="middle">+20</text><line x1="529.8" y1="28" x2="529.8" y2="476" class="axis-tick" /><text x="529.8" y="489" class="tick-label" text-anchor="middle">+40</text><text x="329.0" y="16" class="tick-label" text-anchor="middle">percentage points vs. that subject&#8217;s own baseline</text><rect x="329.0" y="28" width="131.8" height="14" class="bar-skill" rx="1" /><text x="68" y="38" class="row-label" text-anchor="end">slp32</text><text x="468.8" y="38" class="row-value" text-anchor="start">+26.2%</text><rect x="329.0" y="56" width="88.1" height="14" class="bar-skill" rx="1" /><text x="68" y="66" class="row-label" text-anchor="end">slp66</text><text x="425.1" y="66" class="row-value" text-anchor="start">+17.5%</text><rect x="329.0" y="84" width="84.7" height="14" class="bar-skill" rx="1" /><text x="68" y="94" class="row-label" text-anchor="end">slp16</text><text x="421.7" y="94" class="row-value" text-anchor="start">+16.9%</text><rect x="329.0" y="112" width="40.6" height="14" class="bar-skill" rx="1" /><text x="68" y="122" class="row-label" text-anchor="end">slp59</text><text x="377.6" y="122" class="row-value" text-anchor="start">+8.1%</text><rect x="329.0" y="140" width="29.9" height="14" class="bar-skill" rx="1" /><text x="68" y="150" class="row-label" text-anchor="end">slp02b</text><text x="366.9" y="150" class="row-value" text-anchor="start">+5.9%</text><rect x="329.0" y="168" width="26.5" height="14" class="bar-skill" rx="1" /><text x="68" y="178" class="row-label" text-anchor="end">slp01b</text><text x="363.5" y="178" class="row-value" text-anchor="start">+5.3%</text><rect x="329.0" y="196" width="24.3" height="14" class="bar-noskill" rx="1" /><text x="68" y="206" class="row-label" text-anchor="end">slp60</text><text x="361.3" y="206" class="row-value" text-anchor="start">+4.8%</text><rect x="329.0" y="224" width="20.4" height="14" class="bar-noskill" rx="1" /><text x="68" y="234" class="row-label" text-anchor="end">slp14</text><text x="357.4" y="234" class="row-value" text-anchor="start">+4.1%</text><rect x="329.0" y="252" width="1.0" height="14" class="bar-noskill" rx="1" /><text x="68" y="262" class="row-label" text-anchor="end">slp67x</text><text x="337.0" y="262" class="row-value" text-anchor="start">+0.0%</text><rect x="309.0" y="280" width="20.0" height="14" class="bar-noskill" rx="1" /><text x="68" y="290" class="row-label" text-anchor="end">slp02a</text><text x="301.0" y="290" class="row-value" text-anchor="end">-4.0%</text><rect x="284.4" y="308" width="44.6" height="14" class="bar-noskill" rx="1" /><text x="68" y="318" class="row-label" text-anchor="end">slp61</text><text x="276.4" y="318" class="row-value" text-anchor="end">-8.9%</text><rect x="259.6" y="336" width="69.4" height="14" class="bar-noskill" rx="1" /><text x="68" y="346" class="row-label" text-anchor="end">slp48</text><text x="251.6" y="346" class="row-value" text-anchor="end">-13.8%</text><rect x="235.3" y="364" width="93.7" height="14" class="bar-noskill" rx="1" /><text x="68" y="374" class="row-label" text-anchor="end">slp03</text><text x="227.3" y="374" class="row-value" text-anchor="end">-18.7%</text><rect x="200.0" y="392" width="129.0" height="14" class="bar-noskill" rx="1" /><text x="68" y="402" class="row-label" text-anchor="end">slp04</text><text x="192.0" y="402" class="row-value" text-anchor="end">-25.7%</text><rect x="152.5" y="420" width="176.5" height="14" class="bar-noskill" rx="1" /><text x="68" y="430" class="row-label" text-anchor="end">slp01a</text><text x="144.5" y="430" class="row-value" text-anchor="end">-35.1%</text><rect x="105.7" y="448" width="223.3" height="14" class="bar-noskill" rx="1" /><text x="68" y="458" class="row-label" text-anchor="end">slp37</text><text x="97.7" y="458" class="row-value" text-anchor="end">-44.5%</text></svg>
+    <div class="legend">
+      <span><span class="key" style="background:var(--accent)"></span>Beat the subject&#8217;s own baseline</span>
+      <span><span class="key" style="background:var(--crit);opacity:.72"></span>Did not &#8212; guessing the commonest stage would score as well or better</span>
+      <span class="dim">Per-subject detail is from the 12-feature run.</span>
+    </div>
+
+    <div class="verdict">
+      <h3>Read this before quoting the average</h3>
+      <p>The worst subject, slp01a, scores
+      9.2% where predicting one stage for the whole night scores
+      44.4%. 10 of 16 subjects show no
+      skill at all. A mean of 50.4% across four classes
+      &#8212; 4,792 light, 2,753 awake,
+      548 deep, 529 REM &#8212; is not a staging product.
+      It is a measurement of how far heart rate alone gets you, which is not far.</p>
+    </div>
+
+    <div class="strip-head">
+      <h3>What moved the number, and what did not</h3>
+      <p>Two label sets, same protocol. Temporal context &#8212; a 7.5-minute centred
+      rolling average plus a 2-minute trailing one, computed strictly within a night &#8212;
+      is the only change that helped, and it helped on both, which is what makes it credible
+      rather than a lucky split. Frequency-domain HRV made things worse and is shipped off.</p>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr>
+        <th>Feature set</th><th class="num">n</th>
+        <th class="num">4-class acc</th><th class="num">&#954;</th><th class="num">With skill</th>
+        <th class="num">Sleep/wake acc</th><th class="num">&#954;</th><th class="num">With skill</th>
+      </tr></thead>
+      <tbody><tr class="">
+              <td>Per-epoch statistics only</td>
+              <td class="num dim">12</td>
+              <td class="num">50.4%</td>
+              <td class="num">0.211</td>
+              <td class="num">6&#8202;/&#8202;16</td>
+              <td class="num">61.6%</td>
+              <td class="num">0.206</td>
+              <td class="num">3&#8202;/&#8202;16</td>
+            </tr><tr class="best">
+              <td>&#43; temporal context</td>
+              <td class="num dim">36</td>
+              <td class="num">55.7%</td>
+              <td class="num">0.280</td>
+              <td class="num">9&#8202;/&#8202;16</td>
+              <td class="num">66.8%</td>
+              <td class="num">0.287</td>
+              <td class="num">7&#8202;/&#8202;16</td>
+            </tr><tr class="">
+              <td>&#43; full LF/HF spectrum</td>
+              <td class="num dim">48</td>
+              <td class="num">53.3%</td>
+              <td class="num">0.233</td>
+              <td class="num">7&#8202;/&#8202;16</td>
+              <td class="num">66.5%</td>
+              <td class="num">0.280</td>
+              <td class="num">6&#8202;/&#8202;16</td>
+            </tr><tr class="">
+              <td>&#43; normalised HF only</td>
+              <td class="num dim">39</td>
+              <td class="num">55.1%</td>
+              <td class="num">0.263</td>
+              <td class="num">9&#8202;/&#8202;16</td>
+              <td class="num">66.5%</td>
+              <td class="num">0.280</td>
+              <td class="num">7&#8202;/&#8202;16</td>
+            </tr></tbody>
+    </table></div>
+    <p class="dim" style="font-size:.86rem">Best result: 55.7% four-class
+    (&#954;&#8202;0.280, 9/16 subjects) and
+    66.8% sleep/wake (&#954;&#8202;0.287,
+    7/16). Offline scoring of a finished night, not a live readout:
+    the centred window reads epochs from the future.</p>
+  </section>
+
+  <section>
+    <div class="strip-head">
+      <div class="strip-label">06 &#183; Not built</div>
+      <h2>The gaps, named</h2>
+      <p>Listed here rather than left out, because a capability report that only lists
+      capabilities is marketing.</p>
+    </div>
+    <div class="gaps">
+      <div class="gap"><h3>Accelerometer input</h3><p>The single most likely reason staging is stuck. Every wrist-staging method worth copying uses motion alongside heart rate. The dataset we can reach has no accelerometer channel at all.</p></div><div class="gap"><h3>The domain knowledge graphs</h3><p>Twenty subject-area graphs are defined with routing and seeded catalogues, and none has been built. Building them needs an LLM key; search over the harvested code does not, and works today.</p></div><div class="gap"><h3>Nutrition, Mind and Connection input</h3><p>Three of the five factors are answered by asking, and there is no surface for asking yet. The passive half of the product is much further along than the conversational half.</p></div><div class="gap"><h3>Anything clinical</h3><p>Lab ingestion, FHIR observations, evidence-graded recommendations, the audit chain and the mode gate are designed and unbuilt. Nothing here should be pointed at a patient.</p></div><div class="gap"><h3>Multi-user isolation</h3><p>One user, one SQLite file. The citation scheme already carries a user segment; the enforcement behind it does not exist.</p></div>
+    </div>
+  </section>
+</div>

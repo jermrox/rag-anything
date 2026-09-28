@@ -198,3 +198,71 @@ def test_code_ingest_rejects_an_unknown_license_class(tmp_path):
         json={"path": str(tmp_path), "license_override": "not-a-class"},
     )
     assert r.status_code == 422
+
+
+# --- device catalogue endpoints --------------------------------------------
+
+
+def test_list_devices_returns_the_full_catalogue():
+    d = client.get("/api/devices").json()
+    ids = {row["id"] for row in d["devices"]}
+    assert "polar_h10" in ids
+    assert "whoop_4" in ids
+
+
+def test_list_devices_filters_by_access_mode():
+    d = client.get("/api/devices?access_mode=open_ble").json()
+    assert all(row["access_mode"] == "open_ble" for row in d["devices"])
+    assert all(row["directly_connectable"] for row in d["devices"])
+
+
+def test_list_devices_rejects_an_unknown_access_mode():
+    assert client.get("/api/devices?access_mode=telepathy").status_code == 422
+
+
+def test_device_detail_reports_signal_adequacy():
+    d = client.get("/api/devices/whoop_4").json()
+    assert d["access_mode"] == "cloud_api"
+    assert d["signal_adequacy"]["spo2"]["meets_minimum"] is False
+
+
+def test_device_detail_404_for_unknown_device():
+    assert client.get("/api/devices/not_a_real_device").status_code == 404
+
+
+def test_device_gatt_ingest_stores_decoded_samples():
+    from vitalgraph.ble.gatt import encode_heart_rate_measurement
+
+    payload = encode_heart_rate_measurement(61, [810.0, 820.0])
+    r = client.post(
+        "/api/devices/ingest/gatt",
+        json={"device_id": "wahoo_tickr", "hex": payload.hex()},
+    )
+    assert r.status_code == 200
+    d = r.json()
+    assert d["device_id"] == "wahoo_tickr"
+    assert d["samples"] == 3
+    assert d["inserted"] == 3
+
+
+def test_device_gatt_ingest_refuses_a_cloud_only_device():
+    from vitalgraph.ble.gatt import encode_heart_rate_measurement
+
+    payload = encode_heart_rate_measurement(61)
+    r = client.post(
+        "/api/devices/ingest/gatt", json={"device_id": "whoop_4", "hex": payload.hex()}
+    )
+    assert r.status_code == 422
+    assert "cloud_api" in r.json()["detail"]
+
+
+def test_device_gatt_ingest_404_for_unknown_device():
+    r = client.post("/api/devices/ingest/gatt", json={"device_id": "nope", "hex": "00"})
+    assert r.status_code == 404
+
+
+def test_device_gatt_ingest_rejects_bad_hex():
+    r = client.post(
+        "/api/devices/ingest/gatt", json={"device_id": "polar_h10", "hex": "zz"}
+    )
+    assert r.status_code == 422

@@ -11,6 +11,7 @@ import os
 from typing import Any, Dict, Iterable, List
 
 from .bridge.summarizer import PeriodSummary, to_content_list
+from .llm import ClaudeConfig, ClaudeLLM, build_embedding_func
 
 #: Framing constraint applied to every generated answer.
 #:
@@ -32,7 +33,12 @@ Rules:
 
 
 class RAGAnythingUnavailable(RuntimeError):
-    """Raised when RAG features are used without ``raganything`` installed."""
+    """Raised when RAG features are used without ``raganything`` installed.
+
+    :class:`~vitalgraph.llm.ClaudeUnavailable` subclasses nothing in common
+    with this, so the API layer catches both -- to a caller they mean the same
+    thing: the RAG surface cannot serve this request.
+    """
 
 
 def _require_raganything():
@@ -46,54 +52,29 @@ def _require_raganything():
     return RAGAnything, RAGAnythingConfig
 
 
-def build_openai_rag(working_dir: str | None = None) -> Any:
-    """Construct a RAGAnything instance backed by OpenAI models.
+def build_claude_rag(
+    working_dir: str | None = None, config: ClaudeConfig | None = None
+) -> Any:
+    """Construct a RAGAnything instance driven by Claude.
 
-    Mirrors the wiring in ``examples/raganything_example.py`` rather than
-    inventing a new pattern.
+    Claude supplies the completion half -- entity and relation extraction at
+    ingest, and answering at query time. The embedding half comes from a
+    separate provider because Anthropic offers no embeddings endpoint; see
+    :func:`vitalgraph.llm.build_embedding_func`.
     """
     RAGAnything, RAGAnythingConfig = _require_raganything()
-    from functools import partial
 
-    from lightrag.llm.openai import openai_complete_if_cache, openai_embed
-    from lightrag.utils import EmbeddingFunc
+    llm = ClaudeLLM(config)
+    embedding_func = build_embedding_func()
 
-    api_key = os.getenv("LLM_BINDING_API_KEY") or os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RAGAnythingUnavailable(
-            "Set LLM_BINDING_API_KEY (or OPENAI_API_KEY) to enable RAG queries."
-        )
-    base_url = os.getenv("LLM_BINDING_HOST")
-
-    config = RAGAnythingConfig(
+    rag_config = RAGAnythingConfig(
         working_dir=working_dir or os.getenv("VITALGRAPH_RAG_DIR", "./vg_rag_storage"),
     )
 
-    def llm_model_func(prompt, system_prompt=None, history_messages=None, **kwargs):
-        return openai_complete_if_cache(
-            os.getenv("LLM_MODEL", "gpt-4o-mini"),
-            prompt,
-            system_prompt=system_prompt,
-            history_messages=history_messages or [],
-            api_key=api_key,
-            base_url=base_url,
-            **kwargs,
-        )
-
-    embedding_func = EmbeddingFunc(
-        embedding_dim=int(os.getenv("EMBEDDING_DIM", "3072")),
-        func=partial(
-            openai_embed,
-            model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-large"),
-            api_key=api_key,
-            base_url=os.getenv("EMBEDDING_BINDING_HOST", base_url),
-        ),
-    )
-
     return RAGAnything(
-        llm_model_func=llm_model_func,
+        llm_model_func=llm.as_lightrag_func(),
         embedding_func=embedding_func,
-        config=config,
+        config=rag_config,
     )
 
 
@@ -109,7 +90,7 @@ class VitalGraphRAG:
 
     @classmethod
     def from_env(cls, working_dir: str | None = None) -> "VitalGraphRAG":
-        return cls(build_openai_rag(working_dir))
+        return cls(build_claude_rag(working_dir))
 
     async def ingest_summary(self, summary: PeriodSummary) -> Dict[str, Any]:
         """Insert one period summary into the knowledge graph.

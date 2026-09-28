@@ -1,0 +1,71 @@
+{
+  "dataset": "physionet/slpdb",
+  "protocol": "leave-one-subject-out, 16 subjects, 8622 expert-scored epochs",
+  "change": "temporal context: 7.5 min centred triangular-weighted rolling average plus 2 min trailing average, per feature, within night",
+  "method_source": "yasa@dfddbd5:src/yasa/staging.py#L339-L347 (BSD-3-Clause)",
+  "results": {
+    "four_class": {
+      "baseline_12_features": {
+        "accuracy": 0.504,
+        "mean_kappa": 0.211,
+        "subjects_with_skill": 6,
+        "worst_accuracy": 0.092
+      },
+      "with_context_36_features": {
+        "accuracy": 0.557,
+        "mean_kappa": 0.28,
+        "subjects_with_skill": 9,
+        "worst_accuracy": 0.096
+      },
+      "with_context_and_frequency_48_features": {
+        "accuracy": 0.533,
+        "mean_kappa": 0.233,
+        "subjects_with_skill": 7
+      },
+      "with_context_and_compact_frequency_39_features": {
+        "accuracy": 0.551,
+        "mean_kappa": 0.263,
+        "subjects_with_skill": 9
+      }
+    },
+    "sleep_wake": {
+      "baseline_12_features": {
+        "accuracy": 0.616,
+        "mean_kappa": 0.206,
+        "subjects_with_skill": 3,
+        "worst_accuracy": 0.209
+      },
+      "with_context_36_features": {
+        "accuracy": 0.668,
+        "mean_kappa": 0.287,
+        "subjects_with_skill": 7,
+        "worst_accuracy": 0.213
+      },
+      "with_context_and_frequency_48_features": {
+        "accuracy": 0.665,
+        "mean_kappa": 0.28,
+        "subjects_with_skill": 6
+      },
+      "with_context_and_compact_frequency_39_features": {
+        "accuracy": 0.665,
+        "mean_kappa": 0.28,
+        "subjects_with_skill": 7
+      }
+    }
+  },
+  "conclusion": "Temporal context improves both tasks by roughly +0.07 kappa, replicating across two different label sets, which is what makes it credible rather than a lucky split. It is not sufficient: 9 of 16 and 7 of 16 subjects show skill, and the worst subject is barely above chance. Offline only -- the centred window reads future epochs.",
+  "negative_result": {
+    "change": "frequency-domain HRV (LF, HF, LF/HF, normalised HF) over a 5-minute centred window, added on top of temporal context",
+    "outcome": "worse on both tasks: four-class kappa +0.280 -> +0.233 and 9 -> 7 subjects with skill; sleep/wake +0.287 -> +0.280 and 7 -> 6. Not shipped: load_epochs(with_frequency=False) is the default.",
+    "candidate_explanations_untested": [
+      "48 features against 8622 samples gives more room to overfit than 36",
+      "windows that cannot support an estimate emit 0.0, making 'not estimable' indistinguishable from 'no power' to the model",
+      "epochs near the start and end of a record have truncated windows and so produce disproportionately many of those zeros"
+    ],
+    "followup": {
+      "hypothesis": "the regression was feature count, not the features -- so keep only normalised_hf, which is bounded and comparable across subjects",
+      "outcome": "refuted. One feature performs the same as four and neither beats context alone. Frequency-domain HRV over 5-minute windows adds no signal beyond what the smoothed time-domain features already carry, on this dataset.",
+      "remaining": "The zero-fill and truncated-edge explanations are now also unlikely, since a single bounded feature would be far less affected by both and still did not help."
+    }
+  }
+}

@@ -1,0 +1,785 @@
+{
+  "index": "/root/.vitalgraph/search-index.json",
+  "documents": 35437,
+  "probes": 10,
+  "graded_probes": 9,
+  "known_gaps": 1,
+  "answered_in_top_n": 9,
+  "answered_at_rank_1": 7,
+  "limit": 5,
+  "results": [
+    {
+      "question": "Dexcom transmitter authentication challenge",
+      "expect_repo": "xdrip",
+      "why": "Pairing with a CGM transmitter is a challenge-response exchange. xDrip is the only place in the corpus that implements it, so a hit from anywhere else is a wrong answer, not a near miss.",
+      "found_at_rank": 1,
+      "known_gap": false,
+      "top_repos": [
+        "xdrip",
+        "xdrip",
+        "open-wearables",
+        "open-wearables",
+        "open-wearables"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "xdrip@36122b6:wear/src/main/java/com/eveningoutpost/dexdrip/g5model/AuthChallengeTxMessage.java#L11-L26",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 20.03,
+          "matched": [
+            "challenge",
+            "transmitter"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "xdrip@36122b6:app/src/main/java/com/eveningoutpost/dexdrip/g5model/AuthChallengeTxMessage.java#L10-L24",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 20.03,
+          "matched": [
+            "challenge",
+            "transmitter"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "open-wearables@ca85d83:backend/app/services/providers/oura/webhook_handler.py#L162-L176",
+          "repo": "open-wearables",
+          "policy": "verbatim",
+          "score": 14.42,
+          "matched": [
+            "challenge"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "open-wearables@ca85d83:backend/app/services/providers/templates/base_webhook_handler.py#L223-L246",
+          "repo": "open-wearables",
+          "policy": "verbatim",
+          "score": 14.05,
+          "matched": [
+            "challenge"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "open-wearables@ca85d83:backend/app/services/providers/templates/base_oauth.py#L246-L252",
+          "repo": "open-wearables",
+          "policy": "verbatim",
+          "score": 13.72,
+          "matched": [
+            "challenge"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "calibration slope intercept glucose",
+      "expect_repo": "xdrip",
+      "why": "Turning a raw sensor current into a glucose value is the single most safety-critical arithmetic in the corpus.",
+      "found_at_rank": 2,
+      "known_gap": false,
+      "top_repos": [
+        "oref0",
+        "xdrip",
+        "EmotiBit_FeatherWing",
+        "xdrip",
+        "xdrip"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "oref0@88cf032:lib/with-raw-glucose.js#L3-L13",
+          "repo": "oref0",
+          "policy": "verbatim",
+          "score": 31.62,
+          "matched": [
+            "glucose",
+            "intercept",
+            "slope"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "xdrip@36122b6:app/src/main/java/com/eveningoutpost/dexdrip/models/Calibration.java#L134-L151",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 24.57,
+          "matched": [
+            "calibration",
+            "intercept",
+            "slope"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "EmotiBit_FeatherWing@47f981c:EmotiBitEda.h#L75-L79",
+          "repo": "EmotiBit_FeatherWing",
+          "policy": "verbatim",
+          "score": 24.22,
+          "matched": [
+            "calibration",
+            "intercept",
+            "slope"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "xdrip@36122b6:app/src/main/java/com/eveningoutpost/dexdrip/calibrations/PluggableCalibration.java#L20-L216",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 23.76,
+          "matched": [
+            "calibration",
+            "glucose",
+            "slope"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "xdrip@36122b6:wear/src/main/java/com/eveningoutpost/dexdrip/calibrations/PluggableCalibration.java#L20-L216",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 23.76,
+          "matched": [
+            "calibration",
+            "glucose",
+            "slope"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "glucose reading is stale and should not be displayed",
+      "expect_repo": "xdrip",
+      "why": "The refusal this project is built around, implemented against a device people dose insulin from. If the corpus cannot find it, the corpus is not earning its place.",
+      "found_at_rank": 1,
+      "known_gap": false,
+      "top_repos": [
+        "xdrip",
+        "xdrip",
+        "xdrip",
+        "oref0",
+        "xdrip"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "xdrip@36122b6:wear/src/main/java/com/eveningoutpost/dexdrip/BestGlucose.java#L41-L132",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 20.41,
+          "matched": [
+            "glucose",
+            "stale"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "xdrip@36122b6:app/src/main/java/com/eveningoutpost/dexdrip/BestGlucose.java#L42-L134",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 20.41,
+          "matched": [
+            "glucose",
+            "stale"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "xdrip@36122b6:app/src/main/java/com/eveningoutpost/dexdrip/glucosemeter/GlucoseReadingRx.java#L14-L117",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 19.91,
+          "matched": [
+            "glucose",
+            "reading"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "oref0@88cf032:tests/with-raw-glucose.test.js#L1-L59",
+          "repo": "oref0",
+          "policy": "verbatim",
+          "score": 19.08,
+          "matched": [
+            "glucose",
+            "should"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "xdrip@36122b6:app/src/main/java/com/eveningoutpost/dexdrip/tidepool/ESensorGlucose.java#L13-L53",
+          "repo": "xdrip",
+          "policy": "facts_only",
+          "score": 19.0,
+          "matched": [
+            "glucose",
+            "reading"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "polar ECG stream start",
+      "expect_repo": "polar-ble-sdk",
+      "why": "A vendor exposing raw ECG rather than a heart rate number. The capability that separates a research strap from a consumer band.",
+      "found_at_rank": 1,
+      "known_gap": false,
+      "top_repos": [
+        "polar-ble-sdk",
+        "polar-ble-sdk",
+        "polar-ble-sdk",
+        "polar-ble-sdk",
+        "polar-ble-sdk"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "polar-ble-sdk@3d15da6:examples/example-android/polar-sensor-data-collector/app/src/main/java/com/polar/polarsensordatacollector/ui/landing/OnlineRecordingViewModel.kt#L383-L399",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 19.57,
+          "matched": [
+            "ecg",
+            "polar",
+            "start",
+            "stream"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "polar-ble-sdk@3d15da6:examples/example-ios/polar-sensor-data-collector/PSDC/PolarBleSdkManager.swift#L585-L624",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 19.54,
+          "matched": [
+            "ecg",
+            "polar",
+            "start",
+            "stream"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "polar-ble-sdk@3d15da6:examples/example-ios/polar-sensor-data-collector/PSDC/PolarBleSdkManager.swift#L968-L1008",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 19.24,
+          "matched": [
+            "ecg",
+            "polar",
+            "start",
+            "stream"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "polar-ble-sdk@3d15da6:examples/example-android/polar-sensor-data-collector/app/src/main/java/com/polar/polarsensordatacollector/ui/landing/OnlineRecordingViewModel.kt#L467-L490",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 19.12,
+          "matched": [
+            "ecg",
+            "polar",
+            "start",
+            "stream"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "polar-ble-sdk@3d15da6:examples/example-ios/polar-sensor-data-collector/PSDC/DataCollector.swift#L60-L62",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 18.38,
+          "matched": [
+            "ecg",
+            "polar",
+            "start",
+            "stream"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "polar measurement data frame parsing",
+      "expect_repo": "polar-ble-sdk",
+      "why": "Polar's PMD frame format. Expected bleakheart on the first run, on the theory that the independent reimplementation would be the clearer read; the SDK's own parser and its tests won instead, and on inspection they are the fuller answer. The expectation was wrong, not the ranking.",
+      "found_at_rank": 1,
+      "known_gap": false,
+      "top_repos": [
+        "polar-ble-sdk",
+        "polar-ble-sdk",
+        "polar-ble-sdk",
+        "polar-ble-sdk",
+        "polar-ble-sdk"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "polar-ble-sdk@3d15da6:sources/iOS/ios-communications/Tests/iOSCommunicationsTests/PmdDerivedMeasurementSettingTest.swift#L8-L43",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 21.99,
+          "matched": [
+            "data",
+            "measurement",
+            "parsing",
+            "polar"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "polar-ble-sdk@3d15da6:sources/Android/android-communications/library/src/test/java/com/polar/androidcommunications/api/ble/model/gatt/client/pmd/PmdDerivedMeasurementSettingTest.kt#L23-L59",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 20.62,
+          "matched": [
+            "measurement",
+            "parsing",
+            "polar"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "polar-ble-sdk@3d15da6:sources/iOS/ios-communications/Tests/iOSCommunicationsTests/DerivedMeasurementDataTest.swift#L322-L338",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 20.33,
+          "matched": [
+            "data",
+            "frame",
+            "measurement",
+            "polar"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "polar-ble-sdk@3d15da6:sources/iOS/ios-communications/Tests/iOSCommunicationsTests/DerivedMeasurementDataTest.swift#L13-L399",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 19.97,
+          "matched": [
+            "data",
+            "frame",
+            "measurement",
+            "polar"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "polar-ble-sdk@3d15da6:sources/iOS/ios-communications/Tests/iOSCommunicationsTests/DerivedMeasurementDataTest.swift#L20-L27",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 19.29,
+          "matched": [
+            "data",
+            "frame",
+            "measurement",
+            "polar"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "electrodermal activity EDA skin conductance",
+      "expect_repo": "NeuroKit",
+      "why": "Expected EmotiBit here, which was a category error: EmotiBit is the sensor, NeuroKit is the analysis, and the question asks about the signal. A corpus that answered with firmware would be answering a question nobody asked.",
+      "found_at_rank": 1,
+      "known_gap": false,
+      "top_repos": [
+        "NeuroKit",
+        "NeuroKit",
+        "NeuroKit",
+        "NeuroKit",
+        "NeuroKit"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "NeuroKit@ff419d9:neurokit2/eda/eda_plot.py#L11-L219",
+          "repo": "NeuroKit",
+          "policy": "verbatim",
+          "score": 41.45,
+          "matched": [
+            "activity",
+            "conductance",
+            "eda",
+            "electrodermal",
+            "skin"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "NeuroKit@ff419d9:neurokit2/eda/eda_findpeaks.py#L7-L102",
+          "repo": "NeuroKit",
+          "policy": "verbatim",
+          "score": 36.71,
+          "matched": [
+            "activity",
+            "conductance",
+            "eda",
+            "electrodermal",
+            "skin"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "NeuroKit@ff419d9:neurokit2/eda/eda_peaks.py#L10-L110",
+          "repo": "NeuroKit",
+          "policy": "verbatim",
+          "score": 35.62,
+          "matched": [
+            "activity",
+            "conductance",
+            "eda",
+            "electrodermal",
+            "skin"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "NeuroKit@ff419d9:neurokit2/eda/eda_process.py#L12-L122",
+          "repo": "NeuroKit",
+          "policy": "verbatim",
+          "score": 34.87,
+          "matched": [
+            "activity",
+            "conductance",
+            "eda",
+            "electrodermal",
+            "skin"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "NeuroKit@ff419d9:neurokit2/eda/eda_simulate.py#L7-L113",
+          "repo": "NeuroKit",
+          "policy": "verbatim",
+          "score": 31.35,
+          "matched": [
+            "activity",
+            "conductance",
+            "eda",
+            "electrodermal",
+            "skin"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "refuse to dose when data is missing or old",
+      "expect_repo": "oref0",
+      "why": "The most carefully argued 'we do not know enough' code in open-source health software, and the model for our own tiers. It is also the probe that shows the index's limit: this is a question about intent, and every content word in it is common. BM25 matches words, so it returns test files containing 'data', 'missing' and 'when'. Answering this needs embeddings or a model reading the code; it is not a ranking bug to be tuned away.",
+      "found_at_rank": null,
+      "known_gap": true,
+      "top_repos": [
+        "open-wearables",
+        "open-wearables",
+        "open-wearables",
+        "polar-ble-sdk",
+        "open-wearables"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "open-wearables@ca85d83:backend/tests/providers/sensorbio/test_sensorbio_247_data.py#L600-L608",
+          "repo": "open-wearables",
+          "policy": "verbatim",
+          "score": 15.43,
+          "matched": [
+            "data",
+            "missing",
+            "when"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "open-wearables@ca85d83:backend/tests/providers/polar/test_polar_247.py#L90-L94",
+          "repo": "open-wearables",
+          "policy": "verbatim",
+          "score": 14.34,
+          "matched": [
+            "data",
+            "missing",
+            "when"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "open-wearables@ca85d83:backend/tests/providers/garmin/test_garmin_247.py#L797-L802",
+          "repo": "open-wearables",
+          "policy": "verbatim",
+          "score": 14.17,
+          "matched": [
+            "data",
+            "missing",
+            "when"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "polar-ble-sdk@3d15da6:sources/Android/android-communications/library/src/test/java/com/polar/androidcommunications/api/ble/model/gatt/client/BleGapClientTest.kt#L69-L79",
+          "repo": "polar-ble-sdk",
+          "policy": "facts_only",
+          "score": 13.71,
+          "matched": [
+            "data",
+            "old",
+            "when"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "open-wearables@ca85d83:backend/tests/providers/sensorbio/test_sensorbio_247_data.py#L610-L618",
+          "repo": "open-wearables",
+          "policy": "verbatim",
+          "score": 13.62,
+          "matched": [
+            "data",
+            "missing",
+            "when"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "heart rate measurement flags byte RR interval",
+      "expect_repo": "Android-BLE-Library",
+      "why": "The canonical 0x2A37 decode. Expected bleak, which was simply wrong: bleak is transport and carries no heart-rate parser at all, while Nordic's library has the flags-byte implementation with its tests. The index knew the corpus better than I did.",
+      "found_at_rank": 1,
+      "known_gap": false,
+      "top_repos": [
+        "Android-BLE-Library",
+        "Android-BLE-Library",
+        "Android-BLE-Library",
+        "wfdb-python",
+        "hrv-analysis"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "Android-BLE-Library@4a86e6c:ble-common/src/main/java/no/nordicsemi/android/ble/common/callback/hr/HeartRateMeasurementResponse.java#L58-L158",
+          "repo": "Android-BLE-Library",
+          "policy": "verbatim",
+          "score": 43.14,
+          "matched": [
+            "byte",
+            "flags",
+            "heart",
+            "measurement",
+            "rate",
+            "rr"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "Android-BLE-Library@4a86e6c:ble-common/src/test/java/no/nordicsemi/android/ble/common/callback/hr/HeartRateMeasurementDataCallbackTest.java#L39-L133",
+          "repo": "Android-BLE-Library",
+          "policy": "verbatim",
+          "score": 37.43,
+          "matched": [
+            "byte",
+            "heart",
+            "measurement",
+            "rate",
+            "rr"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "Android-BLE-Library@4a86e6c:ble-common/src/main/java/no/nordicsemi/android/ble/common/callback/hr/HeartRateMeasurementDataCallback.java#L1-L107",
+          "repo": "Android-BLE-Library",
+          "policy": "verbatim",
+          "score": 33.8,
+          "matched": [
+            "flags",
+            "heart",
+            "measurement",
+            "rate",
+            "rr"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "wfdb-python@f627b5f:wfdb/processing/hr.py#L108-L153",
+          "repo": "wfdb-python",
+          "policy": "verbatim",
+          "score": 32.35,
+          "matched": [
+            "heart",
+            "interval",
+            "rate",
+            "rr"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "hrv-analysis@4fd889a:hrvanalysis/extract_features.py#L34-L151",
+          "repo": "hrv-analysis",
+          "policy": "facts_only",
+          "score": 31.55,
+          "matched": [
+            "heart",
+            "interval",
+            "measurement",
+            "rate",
+            "rr"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "sleep stage classification from epochs",
+      "expect_repo": "yasa",
+      "why": "The probe that already failed once: this returned a thread-sleep helper and a smart-bulb example before the corpus had any staging code in it at all.",
+      "found_at_rank": 2,
+      "known_gap": false,
+      "top_repos": [
+        "open-wearables",
+        "yasa",
+        "yasa",
+        "yasa",
+        "yasa"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "open-wearables@ca85d83:backend/app/constants/series_types/polar.py#L1-L65",
+          "repo": "open-wearables",
+          "policy": "verbatim",
+          "score": 24.69,
+          "matched": [
+            "classification",
+            "sleep",
+            "stage"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "yasa@dfddbd5:tests/test_heart.py#L19-L57",
+          "repo": "yasa",
+          "policy": "verbatim",
+          "score": 20.62,
+          "matched": [
+            "epochs",
+            "stage"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "yasa@dfddbd5:tests/test_heart.py#L18-L57",
+          "repo": "yasa",
+          "policy": "verbatim",
+          "score": 20.29,
+          "matched": [
+            "epochs",
+            "stage"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "yasa@dfddbd5:src/yasa/detection.py#L2911-L3304",
+          "repo": "yasa",
+          "policy": "verbatim",
+          "score": 20.26,
+          "matched": [
+            "epochs",
+            "sleep",
+            "stage"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "yasa@dfddbd5:src/yasa/heart.py#L22-L199",
+          "repo": "yasa",
+          "policy": "verbatim",
+          "score": 20.02,
+          "matched": [
+            "epochs",
+            "sleep",
+            "stage"
+          ]
+        }
+      ]
+    },
+    {
+      "question": "R peak detection QRS",
+      "expect_repo": "wfdb-python",
+      "why": "Beat detection. Expected heartrate_analysis_python; wfdb-python's qrs.py carries the XQRS and GQRS implementations and is the better answer. Another wrong expectation, kept here with its correction rather than quietly rewritten.",
+      "found_at_rank": 1,
+      "known_gap": false,
+      "top_repos": [
+        "wfdb-python",
+        "wfdb-python",
+        "wfdb-python",
+        "wfdb-python",
+        "wfdb-python"
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "citation": "wfdb-python@f627b5f:wfdb/processing/qrs.py#L639-L680",
+          "repo": "wfdb-python",
+          "policy": "verbatim",
+          "score": 33.24,
+          "matched": [
+            "detection",
+            "peak",
+            "qrs"
+          ]
+        },
+        {
+          "rank": 2,
+          "citation": "wfdb-python@f627b5f:wfdb/processing/qrs.py#L11-L740",
+          "repo": "wfdb-python",
+          "policy": "verbatim",
+          "score": 29.98,
+          "matched": [
+            "detection",
+            "peak",
+            "qrs"
+          ]
+        },
+        {
+          "rank": 3,
+          "citation": "wfdb-python@f627b5f:wfdb/processing/qrs.py#L1601-L1778",
+          "repo": "wfdb-python",
+          "policy": "verbatim",
+          "score": 29.98,
+          "matched": [
+            "detection",
+            "peak",
+            "qrs"
+          ]
+        },
+        {
+          "rank": 4,
+          "citation": "wfdb-python@f627b5f:wfdb/processing/qrs.py#L239-L369",
+          "repo": "wfdb-python",
+          "policy": "verbatim",
+          "score": 25.51,
+          "matched": [
+            "detection",
+            "peak",
+            "qrs"
+          ]
+        },
+        {
+          "rank": 5,
+          "citation": "wfdb-python@f627b5f:wfdb/processing/qrs.py#L447-L480",
+          "repo": "wfdb-python",
+          "policy": "verbatim",
+          "score": 25.17,
+          "matched": [
+            "peak",
+            "qrs"
+          ]
+        }
+      ]
+    }
+  ]
+}

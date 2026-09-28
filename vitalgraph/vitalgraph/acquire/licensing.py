@@ -86,6 +86,20 @@ _SPDX_HEADER = re.compile(
 #: GPL version distinctions, applied after the family is identified.
 _VERSION_2 = re.compile(r"VERSION\s+2(?:\.1)?", re.IGNORECASE)
 
+#: How much of a license document counts as its title block.
+#:
+#: A license names itself at the top and then discusses *other* licenses
+#: further down. GPL-3.0 section 13 is the case that forced this: it contains
+#: the words "GNU Affero General Public License", so a whole-document search
+#: identifies every GPL-3.0 project as AGPL-3.0. Restricting title matching to
+#: the opening of the file is what distinguishes "this is the licence" from
+#: "this licence mentions another one".
+#:
+#: 2000 characters clears the longest title block seen in practice (Apache-2.0
+#: reaches its distinctive phrasing at roughly 500) while stopping well short
+#: of GPL-3.0's section 13 at roughly 30000.
+TITLE_WINDOW_CHARS = 2000
+
 
 @dataclass(frozen=True, slots=True)
 class LicenseFinding:
@@ -147,17 +161,28 @@ def detect_license(text: str) -> LicenseFinding:
         return header
 
     upper = text.upper()
+    title_block = upper[:TITLE_WINDOW_CHARS]
 
-    for phrase, spdx_id in _TEXT_SIGNATURES:
-        if phrase in upper:
+    # Two passes over the same signatures. The first looks only at the title
+    # block, where a document names itself; the second falls back to the whole
+    # text for files that bury or omit a conventional title. Confidence is
+    # lower on the fallback because a phrase deep in a document is as likely to
+    # be a cross-reference as a self-description.
+    for haystack, confidence, where in (
+        (title_block, 0.8, "title block"),
+        (upper, 0.6, "document body"),
+    ):
+        for phrase, spdx_id in _TEXT_SIGNATURES:
+            if phrase not in haystack:
+                continue
             # GPL-family texts name their version in the body.
             if spdx_id.startswith(("GPL", "LGPL", "AGPL")) and _VERSION_2.search(upper):
                 spdx_id = spdx_id.replace("3.0", "2.0").replace("LGPL-2.0", "LGPL-2.1")
             return LicenseFinding(
                 spdx_id=spdx_id,
                 license_class=classify_spdx(spdx_id),
-                confidence=0.8,
-                evidence=f"matched license text: {phrase[:48].title()}",
+                confidence=confidence,
+                evidence=f"matched license text in {where}: {phrase[:48].title()}",
             )
 
     for phrase in _PROPRIETARY_SIGNATURES:

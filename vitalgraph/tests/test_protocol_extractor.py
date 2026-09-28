@@ -15,9 +15,20 @@ def parse(data):
         return struct.unpack_from("<H", data, 1)
 """
 
-PROPRIETARY_SRC = """
+PROPRIETARY_SRC = '''
+"""GATT service UUIDs used by this peripheral."""
+
 VENDOR_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 SIG_IN_DISGUISE = "0000180d-0000-1000-8000-00805f9b34fb"
+'''
+
+#: A 128-bit UUID in a file with nothing to do with Bluetooth. FHIR bundles
+#: use `urn:uuid:` references heavily, and the word "uuid" on the line is why
+#: line-level context cannot be trusted here.
+NON_BLUETOOTH_SRC = """
+def test_bundle_entries():
+    assert bundle.entry[0].fullUrl == "urn:uuid:ff15fd40-ff71-4b48-b366-09c706bed9d0"
+    assert bundle.entry[1].fullUrl == "urn:uuid:8a2b1c3d-1111-2222-3333-444455556666"
 """
 
 
@@ -42,6 +53,41 @@ def test_vendor_128_bit_uuids_are_flagged_proprietary():
     facts = extract_facts(PROPRIETARY_SRC, "v.py")
     vendor = [f for f in facts if f.kind == "uuid_128"]
     assert vendor and vendor[0].uuid.startswith("6e400001")
+
+
+def test_uuids_outside_bluetooth_code_are_not_called_gatt_services():
+    """Regression from the first harvest of ten public repositories.
+
+    A FHIR client's `urn:uuid:` bundle fixtures were reported as vendor-
+    proprietary GATT services. A fabricated protocol fact is worse than a
+    missing one: it is a confidently wrong answer about how a device works.
+    """
+    facts = extract_facts(NON_BLUETOOTH_SRC, "tests/models/bundle_test.py")
+    assert [f for f in facts if f.kind == "uuid_128"] == []
+
+
+def test_crc_polynomials_and_bit_masks_are_not_called_uuids():
+    """0x1021 is the CCITT CRC-16 polynomial, not a characteristic.
+
+    Any four-digit hex literal looks like a 16-bit UUID, which is why the
+    extractor allowlists SIG-allocated ranges instead of blocklisting noise.
+    """
+    source = """
+CRC16_CCITT_POLY = 0x1021
+MAX_PACKET = 0x07FD
+version = 0x0100
+"""
+    assert [f for f in extract_facts(source, "crc.py") if f.kind == "uuid_16"] == []
+
+
+def test_out_of_range_value_is_kept_when_the_line_says_it_is_a_uuid():
+    """A proprietary 16-bit UUID outside SIG ranges is still real.
+
+    The allowlist is a default, not a ceiling: code that names the value
+    provides the evidence the range check cannot.
+    """
+    facts = extract_facts("VENDOR_CHAR_UUID = 0x07FD\n", "vendor.py")
+    assert "0x07FD" in {f.uuid for f in facts}
 
 
 def test_sig_uuid_written_as_128_bit_is_normalised():

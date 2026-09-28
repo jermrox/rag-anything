@@ -23,11 +23,17 @@ honest evaluation, and this module refuses to evaluate any other way.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Dict, List, Sequence, Tuple
 
 from ..biometrics.schema import SleepStage
 from .epochs import EPOCH_FEATURE_NAMES, EpochSample, labelled_only
+from .metrics import (
+    IMPLAUSIBLE_ACCURACY,
+    CrossValidationSummary,
+    SkillAssessment,
+    assess_skill,
+)
 from .registry import SYNTHETIC, ModelCard, require_sklearn
 
 STAGE_NAMES = {
@@ -41,17 +47,13 @@ STAGE_NAMES = {
 #: fitting one person's one night and cannot generalise even in principle.
 MIN_TRAINING_NIGHTS = 3
 
-#: Four-class sleep staging from RR intervals alone reaches roughly 70-80%
-#: agreement with polysomnography in the published literature. Beating that by
-#: a wide margin does not mean the model is exceptional; it means the labels
-#: were derivable from the features by construction. Against this simulator
-#: that is exactly what happens -- the stage track is a deterministic function
-#: of elapsed time, so a model given elapsed time recovers it perfectly.
-#:
-#: Accuracy at or above this threshold is therefore reported as *implausible*
-#: rather than excellent, because in practice it means one of: training on
-#: synthetic data, a leaky split, or a feature that encodes the label.
-IMPLAUSIBLE_ACCURACY = 0.90
+#: The implausibility ceiling is imported from :mod:`vitalgraph.ml.metrics`
+#: rather than defined here. It was defined in both, which is how two copies of
+#: one threshold drift apart -- and it became a parameter once sleep/wake
+#: needed a different value, so a second copy would have silently kept the old
+#: one. Four-class staging from RR intervals reaches roughly 70-80% agreement
+#: with polysomnography; a result far above that means the labels were
+#: derivable from the features by construction, not that the model is good.
 
 #: Published range for RR-only four-class staging, for context in reports.
 PLAUSIBLE_ACCURACY_RANGE = (0.70, 0.80)
@@ -70,6 +72,13 @@ class StagingEvaluation:
     n_test_epochs: int
     test_nights: Tuple[str, ...]
     caveat: str
+    skill: SkillAssessment | None = None
+    """Accuracy against the majority-class baseline, with kappa.
+
+    Optional only so an evaluation can still be constructed without training
+    labels to hand; every evaluation produced by :meth:`SleepStager.evaluate`
+    carries one. A high accuracy with no skill is the failure this exists to
+    surface, and it is invisible in the accuracy alone."""
 
     @property
     def is_implausible(self) -> bool:
@@ -105,6 +114,7 @@ class StagingEvaluation:
             "caveat": self.caveat,
             "is_implausible": self.is_implausible,
             "plausibility": self.plausibility_note(),
+            "skill": self.skill.as_dict() if self.skill else None,
         }
 
 
@@ -150,6 +160,11 @@ class SleepStager:
         self.n_estimators = n_estimators
         self._model: Any = None
         self._nights: Tuple[str, ...] = ()
+        self._train_labels: Tuple[float, ...] = ()
+        """Training label distribution, kept so the majority-class baseline
+        can be computed from training data rather than from the test set.
+        Taking the majority class from test would let the baseline see the
+        answers and make it unbeatable, inverting the comparison."""
 
     @property
     def is_fitted(self) -> bool:
@@ -181,6 +196,7 @@ class SleepStager:
             min_samples_leaf=3,
         ).fit(x, y)
         self._nights = tuple(nights)
+        self._train_labels = tuple(float(s.label) for s in labelled)
 
         return ModelCard(
             name="sleep-stager",
@@ -262,7 +278,87 @@ class SleepStager:
             n_test_epochs=len(labelled),
             test_nights=tuple(test_nights),
             caveat=caveat,
+            skill=assess_skill(predicted, actual, self._train_labels),
         )
+
+
+#: Sleep and wake, the two-class reduction.
+SLEEP_WAKE_NAMES = {0.0: "wake", 1.0: "sleep"}
+
+
+def collapse_to_sleep_wake(samples: Sequence[EpochSample]) -> List[EpochSample]:
+    """Relabel epochs as wake (0) or asleep (1), leaving features untouched.
+
+    Four-class staging from RR intervals alone is a hard problem and our
+    features do not solve it. Sleep/wake is a genuinely easier question and the
+    one the wrist-staging literature reports usable numbers for, so asking it
+    separately says whether the failure is the task or the feature set --
+    which is worth knowing before adding features.
+
+    This is a narrower claim, not a repaired model. A sleep/wake classifier
+    cannot report time in deep sleep or REM, and must never be presented as
+    though it could.
+    """
+    out: List[EpochSample] = []
+    for sample in samples:
+        if sample.label is None:
+            out.append(sample)
+            continue
+        asleep = 0.0 if sample.label == SleepStage.AWAKE.value else 1.0
+        out.append(replace(sample, label=asleep))
+    return out
+
+
+def leave_one_night_out(
+    samples: Sequence[EpochSample],
+    seed: int = 0,
+    n_estimators: int = 200,
+    implausible_above: float = IMPLAUSIBLE_ACCURACY,
+) -> CrossValidationSummary:
+    """Score every night by training on all the others.
+
+    A single held-out night gives one number with no sense of whether it was
+    lucky. Rotating the held-out night uses all the data and produces a
+    distribution, which is the only way to see that a model works for most
+    people and fails completely for some -- the case a mean conceals and the
+    one a health product is actually judged on.
+
+    This mirrors the leave-one-subject-out design used in the wrist-staging
+    literature with the same sensor set. Nights that cannot be trained around,
+    because removing them leaves too few, are skipped rather than scored on a
+    model that could not be fitted.
+    """
+    labelled = labelled_only(samples)
+    nights = sorted({s.night_id for s in labelled})
+    if len(nights) <= MIN_TRAINING_NIGHTS:
+        raise NotEnoughNights(
+            f"leave-one-night-out needs more than {MIN_TRAINING_NIGHTS} nights "
+            f"so each fold still has enough to train on, got {len(nights)}"
+        )
+
+    results: List[Tuple[str, SkillAssessment]] = []
+    for held_out in nights:
+        train = [s for s in labelled if s.night_id != held_out]
+        test = [s for s in labelled if s.night_id == held_out]
+        if not test:
+            continue
+        stager = SleepStager(seed=seed, n_estimators=n_estimators)
+        stager.fit(train)
+        predicted = stager.predict(test)
+        actual = [s.label for s in test]
+        results.append(
+            (
+                held_out,
+                assess_skill(
+                    predicted,
+                    actual,
+                    stager._train_labels,
+                    implausible_above=implausible_above,
+                ),
+            )
+        )
+
+    return CrossValidationSummary(per_subject=tuple(results))
 
 
 def to_content_list(

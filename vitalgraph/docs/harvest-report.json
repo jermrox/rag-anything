@@ -1,0 +1,287 @@
+{
+  "repositories_harvested": 13,
+  "repositories_failed": 0,
+  "total_chunks": 8986,
+  "total_protocol_facts": 1336,
+  "policy_breakdown": {
+    "verbatim": 10,
+    "facts_only": 3
+  },
+  "verbatim_permitted": [
+    "bleak",
+    "Android-BLE-Library",
+    "IOS-CoreBluetooth-Mock",
+    "Adafruit_CircuitPython_BLE",
+    "NeuroKit",
+    "heartrate_analysis_python",
+    "wfdb-python",
+    "yasa",
+    "deepsleepnet",
+    "client-py"
+  ],
+  "facts_only": [
+    "openhaystack",
+    "hrv-analysis",
+    "sleep_classifiers"
+  ],
+  "license_mismatches": [],
+  "repositories": [
+    {
+      "name": "bleak",
+      "category": "ble_stack",
+      "url": "https://github.com/hbldh/bleak.git",
+      "commit": "496d16edd7b91fcf25ebcb1f6f23a82d34e82f44",
+      "citation_ref": "bleak@496d16e",
+      "reused_checkout": true,
+      "expected_spdx": "MIT",
+      "detected_spdx": "MIT",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 86,
+      "chunks": 598,
+      "exact_chunks": 594,
+      "protocol_facts": 1206,
+      "languages": [
+        "java",
+        "python"
+      ]
+    },
+    {
+      "name": "Android-BLE-Library",
+      "category": "ble_stack",
+      "url": "https://github.com/NordicSemiconductor/Android-BLE-Library.git",
+      "commit": "4a86e6c6b2631a29d7de6c5789b11326733f1503",
+      "citation_ref": "Android-BLE-Library@4a86e6c",
+      "reused_checkout": true,
+      "expected_spdx": "BSD-3-Clause",
+      "detected_spdx": "BSD-3-Clause",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 364,
+      "chunks": 685,
+      "exact_chunks": 0,
+      "protocol_facts": 74,
+      "languages": [
+        "java",
+        "kotlin"
+      ]
+    },
+    {
+      "name": "IOS-CoreBluetooth-Mock",
+      "category": "ble_stack",
+      "url": "https://github.com/NordicSemiconductor/IOS-CoreBluetooth-Mock.git",
+      "commit": "5748c9e8b1750e0d7bc09243c099ff618f211cdf",
+      "citation_ref": "IOS-CoreBluetooth-Mock@5748c9e",
+      "reused_checkout": true,
+      "expected_spdx": "BSD-3-Clause",
+      "detected_spdx": "BSD-3-Clause",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 77,
+      "chunks": 461,
+      "exact_chunks": 0,
+      "protocol_facts": 5,
+      "languages": [
+        "c",
+        "javascript",
+        "swift"
+      ]
+    },
+    {
+      "name": "Adafruit_CircuitPython_BLE",
+      "category": "ble_stack",
+      "url": "https://github.com/adafruit/Adafruit_CircuitPython_BLE.git",
+      "commit": "82ada04a0f4019de00d103256621f73b80151a0d",
+      "citation_ref": "Adafruit_CircuitPython_BLE@82ada04",
+      "reused_checkout": true,
+      "expected_spdx": "MIT",
+      "detected_spdx": "MIT",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 40,
+      "chunks": 235,
+      "exact_chunks": 235,
+      "protocol_facts": 51,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "openhaystack",
+      "category": "wearable_protocol",
+      "url": "https://github.com/seemoo-lab/openhaystack.git",
+      "commit": "ea05dadb9e6e71075ef08afb5c2087302fbb7210",
+      "citation_ref": "openhaystack@ea05dad",
+      "reused_checkout": true,
+      "expected_spdx": "AGPL-3.0-only",
+      "detected_spdx": "AGPL-3.0-only",
+      "license_matches_expectation": true,
+      "policy": "facts_only",
+      "files_ingested": 90,
+      "chunks": 369,
+      "exact_chunks": 7,
+      "protocol_facts": 0,
+      "languages": [
+        "c",
+        "cpp",
+        "kotlin",
+        "python",
+        "swift"
+      ]
+    },
+    {
+      "name": "NeuroKit",
+      "category": "biosignal",
+      "url": "https://github.com/neuropsychology/NeuroKit.git",
+      "commit": "ff419d983568ef492eb8d229af643c0ef0100b32",
+      "citation_ref": "NeuroKit@ff419d9",
+      "reused_checkout": true,
+      "expected_spdx": "MIT",
+      "detected_spdx": "MIT",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 355,
+      "chunks": 1101,
+      "exact_chunks": 1101,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "heartrate_analysis_python",
+      "category": "biosignal",
+      "url": "https://github.com/paulvangentcom/heartrate_analysis_python.git",
+      "commit": "ef48d23b73d216cf81c558ad427cd938a5d2f319",
+      "citation_ref": "heartrate_analysis_python@ef48d23",
+      "reused_checkout": true,
+      "expected_spdx": "MIT",
+      "detected_spdx": "MIT",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 13,
+      "chunks": 59,
+      "exact_chunks": 59,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "wfdb-python",
+      "category": "biosignal",
+      "url": "https://github.com/MIT-LCP/wfdb-python.git",
+      "commit": "f627b5ff9dcfdb11d4c3150f9c1ebb47cfc3909d",
+      "citation_ref": "wfdb-python@f627b5f",
+      "reused_checkout": true,
+      "expected_spdx": "MIT",
+      "detected_spdx": "MIT",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 38,
+      "chunks": 423,
+      "exact_chunks": 423,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "hrv-analysis",
+      "category": "biosignal",
+      "url": "https://github.com/Aura-healthcare/hrv-analysis.git",
+      "commit": "4fd889a33c4b78313af924c54ab326622c5a4561",
+      "citation_ref": "hrv-analysis@4fd889a",
+      "reused_checkout": true,
+      "expected_spdx": "GPL-3.0-only",
+      "detected_spdx": "GPL-3.0-only",
+      "license_matches_expectation": true,
+      "policy": "facts_only",
+      "files_ingested": 19,
+      "chunks": 161,
+      "exact_chunks": 46,
+      "protocol_facts": 0,
+      "languages": [
+        "javascript",
+        "python"
+      ]
+    },
+    {
+      "name": "sleep_classifiers",
+      "category": "sleep_staging",
+      "url": "https://github.com/ojwalch/sleep_classifiers.git",
+      "commit": "ec9704f0290563016adbe48184365ab102daf9ea",
+      "citation_ref": "sleep_classifiers@ec9704f",
+      "reused_checkout": true,
+      "expected_spdx": null,
+      "detected_spdx": null,
+      "license_matches_expectation": null,
+      "policy": "facts_only",
+      "files_ingested": 125,
+      "chunks": 501,
+      "exact_chunks": 501,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "yasa",
+      "category": "sleep_staging",
+      "url": "https://github.com/raphaelvallat/yasa.git",
+      "commit": "dfddbd5a7ff622de494365803a4494a2a9dba714",
+      "citation_ref": "yasa@dfddbd5",
+      "reused_checkout": true,
+      "expected_spdx": "BSD-3-Clause",
+      "detected_spdx": "BSD-3-Clause",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 29,
+      "chunks": 494,
+      "exact_chunks": 494,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "deepsleepnet",
+      "category": "sleep_staging",
+      "url": "https://github.com/akaraspt/deepsleepnet.git",
+      "commit": "eb72f9b27af54e6caa1f1bd89a285c58ebfe7779",
+      "citation_ref": "deepsleepnet@eb72f9b",
+      "reused_checkout": true,
+      "expected_spdx": "Apache-2.0",
+      "detected_spdx": "Apache-2.0",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 29,
+      "chunks": 385,
+      "exact_chunks": 385,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    },
+    {
+      "name": "client-py",
+      "category": "health_interop",
+      "url": "https://github.com/smart-on-fhir/client-py.git",
+      "commit": "2586be6fde3b1ba79a054d7f1a466108b22faa93",
+      "citation_ref": "client-py@2586be6",
+      "reused_checkout": true,
+      "expected_spdx": "Apache-2.0",
+      "detected_spdx": "Apache-2.0",
+      "license_matches_expectation": true,
+      "policy": "verbatim",
+      "files_ingested": 363,
+      "chunks": 3514,
+      "exact_chunks": 3511,
+      "protocol_facts": 0,
+      "languages": [
+        "python"
+      ]
+    }
+  ],
+  "failures": []
+}

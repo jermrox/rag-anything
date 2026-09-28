@@ -370,7 +370,9 @@ def chunk_source(
 # --------------------------------------------------------------------------
 
 
-def _facts_only_text(chunk: CodeChunk) -> str:
+def _facts_only_text(
+    chunk: CodeChunk, repo: str | None = None, ref: str | None = None
+) -> str:
     """Describe a symbol without reproducing its body.
 
     This is what enters the corpus for copyleft, proprietary and unlicensed
@@ -378,8 +380,9 @@ def _facts_only_text(chunk: CodeChunk) -> str:
     with the expression withheld.
     """
     parts = [
+        f"Source: {chunk.citation(repo, ref)}",
         f"Symbol `{chunk.qualname}` ({chunk.kind}) in {chunk.path}, "
-        f"lines {chunk.start_line}-{chunk.end_line}, {chunk.language}."
+        f"lines {chunk.start_line}-{chunk.end_line}, {chunk.language}.",
     ]
     if chunk.signature:
         parts.append(f"Signature: {chunk.signature}")
@@ -394,8 +397,11 @@ def _facts_only_text(chunk: CodeChunk) -> str:
     return "\n".join(parts)
 
 
-def _verbatim_text(chunk: CodeChunk) -> str:
+def _verbatim_text(
+    chunk: CodeChunk, repo: str | None = None, ref: str | None = None
+) -> str:
     header = (
+        f"Source: {chunk.citation(repo, ref)}\n"
         f"Symbol `{chunk.qualname}` ({chunk.kind}) in {chunk.path}, "
         f"lines {chunk.start_line}-{chunk.end_line}, {chunk.language}."
     )
@@ -407,6 +413,8 @@ def _verbatim_text(chunk: CodeChunk) -> str:
 def to_content_list(
     chunks: Iterable[CodeChunk],
     provenance: Provenance,
+    repo: str | None = None,
+    ref: str | None = None,
 ) -> List[Dict[str, Any]]:
     """Render chunks as ``insert_content_list`` items, applying the gate.
 
@@ -414,14 +422,24 @@ def to_content_list(
     source verbatim or only its interface and behaviour. This is the single
     place that decision is applied to code, so it cannot be bypassed by a
     caller assembling content some other way.
+
+    ``repo`` and ``ref`` are written into each item's text as a ``Source:``
+    line. They belong in the text rather than beside it because the host
+    framework's ``file_path`` is a property of the whole document, not of an
+    item: one insert covers a whole repository, so a document-level path
+    identifies the repository but never the file or the lines. A retrieved
+    chunk has to carry its own citation or it has none, and an answer that
+    cannot be traced to a commit and a line range is the failure mode this
+    whole pipeline exists to avoid.
     """
     policy = provenance.use_policy
+    ref = ref if ref is not None else provenance.upstream_ref
     items: List[Dict[str, Any]] = []
     for index, chunk in enumerate(chunks):
         text = (
-            _verbatim_text(chunk)
+            _verbatim_text(chunk, repo, ref)
             if policy is UsePolicy.VERBATIM
-            else _facts_only_text(chunk)
+            else _facts_only_text(chunk, repo, ref)
         )
         items.append({"type": "text", "text": text, "page_idx": index})
     return items

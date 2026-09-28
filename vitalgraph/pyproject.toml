@@ -17,9 +17,12 @@ dependencies = []
 
 [project.optional-dependencies]
 api = ["fastapi>=0.110", "uvicorn>=0.27", "pydantic>=2.0"]
-rag = ["raganything"]
+rag = ["raganything", "anthropic>=1.0"]
+embeddings = ["voyageai>=0.3"]
 harvest = ["httpx>=0.27"]          # network harvesters
 ml = ["numpy>=1.24", "scikit-learn>=1.3"]
+# Real polysomnography: scipy is needed for the QRS bandpass and peak finding.
+data = ["numpy>=1.24", "scipy>=1.10"]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio",
@@ -27,6 +30,7 @@ dev = [
     "ruff",
     "numpy>=1.24",
     "scikit-learn>=1.3",
+    "scipy>=1.10",
 ]
 
 [project.scripts]
